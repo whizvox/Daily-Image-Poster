@@ -3,12 +3,10 @@ package me.whizvox.dailyimageposter;
 import me.whizvox.dailyimageposter.db.BackupManager;
 import me.whizvox.dailyimageposter.db.PostRepository;
 import me.whizvox.dailyimageposter.gui.MainFrame;
-import me.whizvox.dailyimageposter.gui.PostPanel;
 import me.whizvox.dailyimageposter.reddit.RedditClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.swing.*;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.IOException;
@@ -23,6 +21,8 @@ import java.sql.SQLException;
 import java.util.Properties;
 
 public class DailyImagePoster {
+
+  public static final int GAP_SIZE = 10;
 
   public static final Logger LOG = LoggerFactory.getLogger(DailyImagePoster.class);
 
@@ -105,10 +105,6 @@ public class DailyImagePoster {
     return posts;
   }
 
-  public void changePanel(JPanel panel, String title) {
-    mainFrame.update(panel, title);
-  }
-
   public void close() {
     try {
       backupManager.saveMetaData();
@@ -142,7 +138,6 @@ public class DailyImagePoster {
         instance.close();
       }
     });
-    instance.changePanel(new PostPanel(), null);
     // import my not-public database schema. this, along with the legacy package will be deleted at some point
     /*ImportLegacyDatabase run = new ImportLegacyDatabase();
     run.importLegacy(Paths.get("C:\\Users\\corne\\Pictures\\Daily Haruhiism\\history.json"));*/

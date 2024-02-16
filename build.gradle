@@ -16,6 +16,7 @@ dependencies {
   // add support for Java 8 time objects in Jackson
   implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.16.1'
   implementation 'org.xerial:sqlite-jdbc:3.45.1.0'
+  implementation 'com.github.lgooddatepicker:LGoodDatePicker:11.2.1'
   compileOnly 'org.jetbrains:annotations:24.1.0'
 
   testImplementation platform('org.junit:junit-bom:5.9.1')

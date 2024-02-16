@@ -77,7 +77,7 @@ public class EnterCredentialsPanel extends JPanel {
       testCredentials(client -> {
         DailyImagePoster app = DailyImagePoster.getInstance();
         app.setClient(client);
-        app.changePanel(new PostPanel(), null);
+        //app.changePanel(new PostPanel(), null);
       });
     });
   }

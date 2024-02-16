@@ -19,7 +19,9 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
+import java.util.Objects;
 import java.util.TooManyListenersException;
+import java.util.UUID;
 
 public class PostPanel extends JPanel {
 
@@ -29,6 +31,7 @@ public class PostPanel extends JPanel {
 
   private final DailyImagePoster app;
 
+  private final JLabel idLabel;
   private final JTextField numberField;
   private final JButton latestNumberButton;
   private final JButton checkNumberButton;
@@ -46,8 +49,9 @@ public class PostPanel extends JPanel {
   private final JButton shrinkImageButton;
   private final JButton upscaleImageButton;
   private final JLabel noCredentialsLabel;
-  private final JButton submitButton;
+  private final JButton postButton;
 
+  private UUID id;
   private BufferedImage selectedImage;
   private File lastSelectedDir;
   private int imageWidth, imageHeight;
@@ -55,6 +59,8 @@ public class PostPanel extends JPanel {
 
   public PostPanel() {
     app = DailyImagePoster.getInstance();
+    id = UUID.randomUUID();
+    idLabel = new JLabel("ID: " + id);
     JLabel numberLabel = new JLabel("Number");
     numberField = new JTextField();
     latestNumberButton = new JButton("Latest");
@@ -84,7 +90,7 @@ public class PostPanel extends JPanel {
     shrinkImageButton = new JButton("Shrink");
     upscaleImageButton = new JButton("Upscale");
     noCredentialsLabel = new JLabel();
-    submitButton = new JButton("Post");
+    postButton = new JButton("Post");
     selectedImage = null;
     lastSelectedDir = new File(".");
     imageWidth = imageHeight = 0;
@@ -133,7 +139,7 @@ public class PostPanel extends JPanel {
             )
         )
         .addComponent(noCredentialsLabel, GroupLayout.Alignment.CENTER)
-        .addComponent(submitButton, GroupLayout.Alignment.TRAILING)
+        .addComponent(postButton, GroupLayout.Alignment.TRAILING)
     );
     layout.setVerticalGroup(layout.createSequentialGroup()
         .addGroup(layout.createParallelGroup()
@@ -181,7 +187,7 @@ public class PostPanel extends JPanel {
         )
         .addGap(GAP_SIZE)
         .addComponent(noCredentialsLabel)
-        .addComponent(submitButton)
+        .addComponent(postButton)
     );
     setLayout(layout);
 
@@ -234,6 +240,19 @@ public class PostPanel extends JPanel {
       throw new RuntimeException(e);
     }
 
+  }
+
+  public void updatePost(Post post) {
+    idLabel.setText("ID: " + post.id());
+    numberField.setText(post.formatNumber());
+    titleField.setText(Objects.requireNonNullElse(post.title(), ""));
+    artistField.setText(Objects.requireNonNullElse(post.artist(), ""));
+    sourceField.setText(Objects.requireNonNullElse(post.source(), ""));
+    commentField.setText(Objects.requireNonNullElse(post.comment(), ""));
+    postNsfwBox.setSelected(post.postNsfw());
+    sourceNsfwBox.setSelected(post.sourceNsfw());
+    boolean enablePostButton = post.whenPosted() == null;
+    postButton.setEnabled(enablePostButton);
   }
 
   private void checkTitle() {

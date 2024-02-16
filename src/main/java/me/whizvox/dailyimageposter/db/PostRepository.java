@@ -1,10 +1,9 @@
 package me.whizvox.dailyimageposter.db;
 
+import me.whizvox.dailyimageposter.DailyImagePoster;
+
 import java.sql.*;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 public class PostRepository extends Repository<Post> {
 
@@ -72,6 +71,86 @@ public class PostRepository extends Repository<Post> {
 
   public List<Post> getAllPosted() {
     return executeQuery(SQL_SELECT_ALL_POSTED, this::fromRows);
+  }
+
+  public List<Post> search(Map<String, Object> query) {
+    StringBuilder sb = new StringBuilder();
+    sb.append(SQL_SELECT_ALL);
+    List<Object> args = new ArrayList<>();
+    if (!query.isEmpty()) {
+      sb.append(" WHERE ");
+      query.forEach((key, value) -> {
+        if (!args.isEmpty()) {
+          sb.append(" AND ");
+        }
+        try {
+          switch (key) {
+            case "number" -> {
+              String number = (String) value;
+              int indexOf = number.indexOf('.');
+              if (indexOf != -1) {
+                args.add(Integer.parseInt(number.substring(0, indexOf)));
+                args.add(Integer.parseInt(number.substring(indexOf + 1)));
+                sb.append("num = ? AND sub_num = ?");
+              } else {
+                args.add(Integer.parseInt(number));
+                sb.append("num = ?");
+              }
+            }
+            case "minNumber" -> {
+              args.add(Integer.parseInt((String) value));
+              sb.append("num >= ?");
+            }
+            case "maxNumber" -> {
+              args.add(Integer.parseInt((String) value));
+              sb.append("num <= ?");
+            }
+            case "title" -> {
+              args.add(value);
+              sb.append("title LIKE '%' || ? || '%'");
+            }
+            case "artist" -> {
+              args.add(value);
+              sb.append("artist LIKE '%' || ? || '%'");
+            }
+            case "source" -> {
+              args.add(value);
+              sb.append("source LIKE '%' || ? || '%'");
+            }
+            case "comment" -> {
+              args.add(value);
+              sb.append("comment LIKE '%' || ? || '%'");
+            }
+            case "hasBeenPosted" -> {
+              if ((boolean) value) {
+                sb.append("when_posted IS NOT NULL");
+              } else {
+                sb.append("when_posted IS NULL");
+              }
+            }
+            case "postedAfter" -> {
+              args.add(value);
+              sb.append("when_posted >= ?");
+            }
+            case "postedBefore" -> {
+              args.add(value);
+              sb.append("when_posted <= ?");
+            }
+            case "uploaded" -> {
+              switch ((String) value) {
+                case "imgur" -> sb.append("imgur_id IS NOT NULL");
+                case "reddit" -> sb.append("imgur_id IS NULL");
+                default -> throw new IllegalArgumentException();
+              }
+            }
+          }
+        } catch (IllegalArgumentException e) {
+          DailyImagePoster.LOG.info("Invalid value for {}: {}", key, value);
+        }
+      });
+    }
+    DailyImagePoster.LOG.debug("POST SEARCH QUERY GENERATED: {}", sb);
+    return executeQuery(sb.toString(), args, this::fromRows);
   }
 
   public void add(Post post) {
