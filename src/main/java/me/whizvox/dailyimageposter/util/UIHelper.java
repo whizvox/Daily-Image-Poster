@@ -2,10 +2,14 @@ package me.whizvox.dailyimageposter.util;
 
 import me.whizvox.dailyimageposter.DailyImagePoster;
 import me.whizvox.dailyimageposter.gui.post.PostFrame;
+import me.whizvox.dailyimageposter.gui.prefs.PreferencesDialog;
+import me.whizvox.dailyimageposter.gui.prefs.PreferencesPanel;
 import me.whizvox.dailyimageposter.gui.search.SearchPostsFrame;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.net.URI;
@@ -44,6 +48,7 @@ public class UIHelper {
     menuBar.add(fileMenu);
     JMenuItem fileAbout = new JMenuItem("About");
     JMenuItem fileConfig = new JMenuItem("Preferences");
+    fileConfig.addActionListener(event -> new PreferencesDialog(frame, "Preferences", true));
     JMenuItem fileExit = new JMenuItem("Exit");
     fileMenu.add(fileAbout);
     fileMenu.add(fileConfig);

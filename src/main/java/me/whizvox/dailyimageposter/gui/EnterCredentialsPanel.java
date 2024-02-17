@@ -92,7 +92,7 @@ public class EnterCredentialsPanel extends JPanel {
     RedditClientProperties props = new RedditClientProperties(
         clientId,
         clientSecret,
-        app.properties.getProperty(DailyImagePoster.PROP_USER_AGENT),
+        app.preferences.getProperty(DailyImagePoster.PROP_USER_AGENT),
         username,
         password
     );

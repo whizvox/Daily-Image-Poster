@@ -4,6 +4,8 @@ import me.whizvox.dailyimageposter.DailyImagePoster;
 import me.whizvox.dailyimageposter.exception.UnexpectedResponseException;
 import me.whizvox.dailyimageposter.util.JsonHelper;
 
+import java.net.Authenticator;
+import java.net.PasswordAuthentication;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
@@ -42,6 +44,12 @@ public class RedditClient {
   public RedditClient(RedditClientProperties props) {
     this.props = props;
     client = HttpClient.newBuilder()
+        /*.authenticator(new Authenticator() {
+          @Override
+          protected PasswordAuthentication getPasswordAuthentication() {
+            return new PasswordAuthentication(props.clientId(), props.clientSecret().toCharArray());
+          }
+        })*/
         .build();
     accessToken = null;
   }
@@ -71,7 +79,7 @@ public class RedditClient {
     return accessToken != null;
   }
 
-  private HttpRequest.Builder builder(String uri, String method, Map<String, Object> args, String contentType, String authentication) {
+  private HttpRequest.Builder builder(String uri, String method, Map<String, Object> args, String contentType, String authorization) {
     boolean hasArgs = args != null && !args.isEmpty();
     URI actualUri;
     boolean argsInBody;
@@ -80,7 +88,7 @@ public class RedditClient {
       argsInBody = false;
     } else {
       actualUri = URI.create(uri);
-      argsInBody = true;
+      argsInBody = hasArgs;
     }
     HttpRequest.Builder builder = HttpRequest.newBuilder(actualUri)
         .header("User-Agent", props.userAgent());
@@ -94,8 +102,8 @@ public class RedditClient {
     } else {
       builder.method(method, HttpRequest.BodyPublishers.noBody());
     }
-    if (authentication != null) {
-      builder.header("Authentication", authentication);
+    if (authorization != null) {
+      builder.header("Authorization", authorization);
     }
     return builder;
   }

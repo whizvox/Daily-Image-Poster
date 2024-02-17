@@ -23,7 +23,7 @@ public class UnexpectedResponseException extends RuntimeException {
   }
 
   public UnexpectedResponseException(HttpResponse<?> response) {
-    this(null, response);
+    this(String.format("[%d] %s", response.statusCode(), response.body()), response);
   }
 
   public int statusCode() {

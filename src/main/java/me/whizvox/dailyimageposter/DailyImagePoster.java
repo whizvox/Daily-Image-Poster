@@ -46,7 +46,8 @@ public class DailyImagePoster {
   }
 
   private JFrame currentFrame;
-  public final Properties properties;
+  public final Properties preferences;
+  private final Path prefsFile;
 
   private RedditClient client;
   private Connection conn;
@@ -55,31 +56,37 @@ public class DailyImagePoster {
   private BackupManager backupManager;
 
   public DailyImagePoster() {
-    properties = new Properties();
+    preferences = new Properties();
     client = null;
     conn = null;
     posts = null;
+    prefsFile = Paths.get("dip.properties");
     imageManager = new ImageManager(Paths.get("images"));
     backupManager = new BackupManager(Paths.get("backups"));
   }
 
-  private void readProperties(String fileName) {
-    Path propsFile = Paths.get(fileName);
-    if (Files.exists(propsFile)) {
-      try (Reader reader = Files.newBufferedReader(Paths.get("./" + fileName))) {
-        properties.clear();
-        properties.load(reader);
+  private void loadPreferences() {
+    if (Files.exists(prefsFile)) {
+      try (Reader reader = Files.newBufferedReader(prefsFile)) {
+        preferences.clear();
+        preferences.load(reader);
       } catch (IOException e) {
         LOG.warn("Could not read properties file", e);
       }
+    } else {
+      preferences.clear();
+      preferences.putAll(createDefaultProperties());
+      savePreferences();
     }
-    properties.clear();
-    properties.putAll(createDefaultProperties());
-    try (OutputStream out = Files.newOutputStream(propsFile)) {
-      properties.store(out, null);
+  }
+
+  public void savePreferences() {
+    try (OutputStream out = Files.newOutputStream(prefsFile)) {
+      preferences.store(out, null);
     } catch (IOException e) {
       LOG.warn("Could not create default properties file", e);
     }
+    LOG.info("Preferences saved");
   }
 
   private void initDatabase(String dbName) throws SQLException {
@@ -148,7 +155,7 @@ public class DailyImagePoster {
 
   public static void main(String[] args) {
     instance = new DailyImagePoster();
-    instance.readProperties("dip.properties");
+    instance.loadPreferences();
     try {
       instance.initDatabase("dip.db");
     } catch (SQLException e) {
