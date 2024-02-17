@@ -1,5 +1,7 @@
 package me.whizvox.dailyimageposter.db;
 
+import org.jetbrains.annotations.Nullable;
+
 import java.sql.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -74,12 +76,20 @@ public abstract class Repository<T> {
     execute(sql, null);
   }
 
-  protected abstract T fromRow(ResultSet rs) throws SQLException;
+  protected abstract T fromRow0(ResultSet rs) throws SQLException;
+
+  @Nullable
+  protected T fromRow(ResultSet rs) throws SQLException {
+    if (rs.next()) {
+      return fromRow0(rs);
+    }
+    return null;
+  }
 
   protected List<T> fromRows(ResultSet rs) throws SQLException {
     List<T> list = new ArrayList<>();
     while (rs.next()) {
-      list.add(fromRow(rs));
+      list.add(fromRow0(rs));
     }
     return list;
   }

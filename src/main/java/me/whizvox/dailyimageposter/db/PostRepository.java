@@ -11,13 +11,14 @@ public class PostRepository extends Repository<Post> {
       SQL_CREATE =
           "CREATE TABLE IF NOT EXISTS posts(" +
               "id CHAR(36) PRIMARY KEY, " +
+              "file_name VARCHAR(255)," +
               "num INT, " +
               "sub_num TINYINT, " +
               "title VARCHAR(255), " +
               "artist VARCHAR(255), " +
               "source VARCHAR(255), " +
               "comment VARCHAR(1024), " +
-              "post_nsfw BIT NOT NULL, " +
+              "image_nsfw BIT NOT NULL, " +
               "source_nsfw BIT NOT NULL, " +
               "reddit_post_id VARCHAR(8), " +
               "reddit_comment_id VARCHAR(8), " +
@@ -25,13 +26,14 @@ public class PostRepository extends Repository<Post> {
               "when_posted TIMESTAMP" +
           ")",
       SQL_INSERT = "INSERT INTO posts " +
-          "(id,num,sub_num,title,artist,source,comment,post_nsfw,source_nsfw,reddit_post_id,reddit_comment_id,imgur_id,when_posted) " +
-          "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+          "(id,file_name,num,sub_num,title,artist,source,comment,image_nsfw,source_nsfw,reddit_post_id,reddit_comment_id,imgur_id,when_posted) " +
+          "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
       SQL_UPDATE = "UPDATE posts SET " +
-          "num=?,sub_num=?,title=?,artist=?,source=?,comment=?,post_nsfw=?,source_nsfw=?,reddit_post_id=?,reddit_comment_id=?,imgur_id=?,when_posted=? " +
+          "file_name=?,num=?,sub_num=?,title=?,artist=?,source=?,comment=?,image_nsfw=?,source_nsfw=?,reddit_post_id=?,reddit_comment_id=?,imgur_id=?,when_posted=? " +
           "WHERE id=?",
-      SQL_SELECT_ALL = "SELECT id,num,sub_num,title,artist,source,comment,post_nsfw,source_nsfw,reddit_post_id,reddit_comment_id,imgur_id,when_posted FROM posts",
+      SQL_SELECT_ALL = "SELECT id,file_name,num,sub_num,title,artist,source,comment,image_nsfw,source_nsfw,reddit_post_id,reddit_comment_id,imgur_id,when_posted FROM posts",
       SQL_SELECT_ONE = SQL_SELECT_ALL + " WHERE id=?",
+      SQL_SELECT_BY_FILE = SQL_SELECT_ALL + " WHERE file_name=?",
       SQL_SELECT_BY_TITLE = SQL_SELECT_ALL + " WHERE UPPER(title) LIKE '%' || ? || '%'",
       SQL_SEARCH_LAST = SQL_SELECT_ONE + " WHERE num IS NOT NULL AND sub_num IS NOT NULL ORDER BY num,sub_num LIMIT 1",
       SQL_SELECT_ALL_POSTED = SQL_SELECT_ALL + " WHERE when_posted IS NOT NULL",
@@ -55,6 +57,10 @@ public class PostRepository extends Repository<Post> {
 
   public Post get(UUID id) {
     return executeQuery(SQL_SELECT_ONE, List.of(id), this::fromRow);
+  }
+
+  public Post getByFileName(String fileName) {
+    return executeQuery(SQL_SELECT_BY_FILE, List.of(fileName), this::fromRow);
   }
 
   public List<Post> getAll() {
@@ -85,6 +91,10 @@ public class PostRepository extends Repository<Post> {
         }
         try {
           switch (key) {
+            case "fileName" -> {
+              args.add(value);
+              sb.append("file_name LIKE '%' || ? || '%'");
+            }
             case "number" -> {
               String number = (String) value;
               int indexOf = number.indexOf('.');
@@ -156,13 +166,14 @@ public class PostRepository extends Repository<Post> {
   public void add(Post post) {
     execute(SQL_INSERT, List.of(
         post.id(),
+        NullValue.of(post.fileName(), Types.VARCHAR),
         post.number(),
         post.subNumber(),
         NullValue.of(post.title(), Types.VARCHAR),
         NullValue.of(post.artist(), Types.VARCHAR),
         NullValue.of(post.source(), Types.VARCHAR),
         NullValue.of(post.comment(), Types.VARCHAR),
-        post.postNsfw(),
+        post.imageNsfw(),
         post.sourceNsfw(),
         NullValue.of(post.redditPostId(), Types.VARCHAR),
         NullValue.of(post.redditCommentId(), Types.VARCHAR),
@@ -173,13 +184,14 @@ public class PostRepository extends Repository<Post> {
 
   public void update(Post post) {
     execute(SQL_UPDATE, Arrays.asList(
+        NullValue.of(post.fileName(), Types.VARCHAR),
         post.number(),
         post.subNumber(),
         NullValue.of(post.title(), Types.VARCHAR),
         NullValue.of(post.artist(), Types.VARCHAR),
         NullValue.of(post.source(), Types.VARCHAR),
         NullValue.of(post.comment(), Types.VARCHAR),
-        post.postNsfw(),
+        post.imageNsfw(),
         post.sourceNsfw(),
         NullValue.of(post.redditPostId(), Types.VARCHAR),
         NullValue.of(post.redditCommentId(), Types.VARCHAR),
@@ -198,21 +210,22 @@ public class PostRepository extends Repository<Post> {
   }
 
   @Override
-  protected Post fromRow(ResultSet rs) throws SQLException {
+  protected Post fromRow0(ResultSet rs) throws SQLException {
     return new Post(
         UUID.fromString(rs.getString(1)),
-        rs.getInt(2),
-        rs.getByte(3),
-        rs.getString(4),
+        rs.getString(2),
+        rs.getInt(3),
+        rs.getByte(4),
         rs.getString(5),
         rs.getString(6),
         rs.getString(7),
-        rs.getBoolean(8),
+        rs.getString(8),
         rs.getBoolean(9),
-        rs.getString(10),
+        rs.getBoolean(10),
         rs.getString(11),
         rs.getString(12),
-        Optional.ofNullable(rs.getTimestamp(13)).map(Timestamp::toLocalDateTime).orElse(null)
+        rs.getString(13),
+        Optional.ofNullable(rs.getTimestamp(14)).map(Timestamp::toLocalDateTime).orElse(null)
     );
   }
 

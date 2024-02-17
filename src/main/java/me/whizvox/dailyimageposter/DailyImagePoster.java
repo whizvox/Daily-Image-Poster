@@ -1,14 +1,15 @@
 package me.whizvox.dailyimageposter;
 
 import me.whizvox.dailyimageposter.db.BackupManager;
+import me.whizvox.dailyimageposter.db.ImageManager;
 import me.whizvox.dailyimageposter.db.PostRepository;
-import me.whizvox.dailyimageposter.gui.MainFrame;
+import me.whizvox.dailyimageposter.gui.post.PostFrame;
+import me.whizvox.dailyimageposter.legacy.ImportLegacyDatabase;
 import me.whizvox.dailyimageposter.reddit.RedditClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
+import javax.swing.*;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.Reader;
@@ -19,6 +20,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.Properties;
+import java.util.function.Supplier;
 
 public class DailyImagePoster {
 
@@ -43,20 +45,21 @@ public class DailyImagePoster {
     return props;
   }
 
-  public final MainFrame mainFrame;
+  private JFrame currentFrame;
   public final Properties properties;
 
   private RedditClient client;
   private Connection conn;
   private PostRepository posts;
+  private ImageManager imageManager;
   private BackupManager backupManager;
 
   public DailyImagePoster() {
-    mainFrame = new MainFrame();
     properties = new Properties();
     client = null;
     conn = null;
     posts = null;
+    imageManager = new ImageManager(Paths.get("images"));
     backupManager = new BackupManager(Paths.get("backups"));
   }
 
@@ -105,6 +108,25 @@ public class DailyImagePoster {
     return posts;
   }
 
+  public ImageManager images() {
+    return imageManager;
+  }
+
+  public void changeFrame(Supplier<JFrame> frameSupplier, String title) {
+    if (currentFrame != null) {
+      currentFrame.dispose();
+    }
+    currentFrame = frameSupplier.get();
+    currentFrame.setLocationRelativeTo(null);
+    currentFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+    if (title == null) {
+      currentFrame.setTitle("Daily Image Poster");
+    } else {
+      currentFrame.setTitle(title + " | Daily Image Poster");
+    }
+    currentFrame.setVisible(true);
+  }
+
   public void close() {
     try {
       backupManager.saveMetaData();
@@ -132,15 +154,31 @@ public class DailyImagePoster {
     } catch (SQLException e) {
       throw new RuntimeException("Could not initialize database", e);
     }
-    instance.mainFrame.addWindowListener(new WindowAdapter() {
+    instance.changeFrame(PostFrame::new, null);
+    /*instance.currentFrame.addWindowListener(new WindowAdapter() {
       @Override
       public void windowClosed(WindowEvent e) {
         instance.close();
       }
-    });
+    });*/
     // import my not-public database schema. this, along with the legacy package will be deleted at some point
-    /*ImportLegacyDatabase run = new ImportLegacyDatabase();
-    run.importLegacy(Paths.get("C:\\Users\\corne\\Pictures\\Daily Haruhiism\\history.json"));*/
+    String legacyDirStr = null;
+    for (String arg : args) {
+      if (arg.startsWith("--legacydir=")) {
+        legacyDirStr = arg.substring(12);
+        break;
+      }
+    }
+    if (legacyDirStr != null) {
+      Path legacyDir = Paths.get(legacyDirStr);
+      if (Files.exists(legacyDir) && Files.isDirectory(legacyDir)) {
+        LOG.info("Importing legacy database...");
+        ImportLegacyDatabase run = new ImportLegacyDatabase();
+        run.importLegacy(legacyDir);
+      } else {
+        LOG.warn("Provided legacy directory is not valid: {}", legacyDirStr);
+      }
+    }
   }
 
 }

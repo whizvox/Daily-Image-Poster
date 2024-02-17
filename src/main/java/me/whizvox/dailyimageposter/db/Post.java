@@ -4,13 +4,14 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 public record Post(UUID id,
+                   String fileName,
                    int number,
                    byte subNumber,
                    String title,
                    String artist,
                    String source,
                    String comment,
-                   boolean postNsfw,
+                   boolean imageNsfw,
                    boolean sourceNsfw,
                    String redditPostId,
                    String redditCommentId,
@@ -28,13 +29,14 @@ public record Post(UUID id,
   public String toString() {
     return "Post{" +
         "id=" + id +
+        ", fileName='" + fileName + '\'' +
         ", number=" + number +
         ", subNumber=" + subNumber +
         ", title='" + title + '\'' +
         ", artist='" + artist + '\'' +
         ", source='" + source + '\'' +
         ", comment='" + comment + '\'' +
-        ", postNsfw=" + postNsfw +
+        ", imageNsfw=" + imageNsfw +
         ", sourceNsfw=" + sourceNsfw +
         ", redditPostId='" + redditPostId + '\'' +
         ", redditCommentId='" + redditCommentId + '\'' +

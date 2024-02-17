@@ -28,12 +28,21 @@ public class ImportLegacyDatabase {
     app = DailyImagePoster.getInstance();
   }
 
-  public void importLegacy(Path file) {
+  public void importLegacy(Path legacyDir) {
     try {
-      List<Entry> entries = JsonHelper.OBJECT_MAPPER.readValue(file.toFile(), new TypeReference<>() {});
+      Path imagesDir = legacyDir.resolve("images");
+      List<Entry> entries = JsonHelper.OBJECT_MAPPER.readValue(legacyDir.resolve("history.json").toFile(), new TypeReference<>() {});
       app.getPosts().deleteAll();
       entries.forEach(entry -> {
-        app.getPosts().add(new Post(UUID.randomUUID(), entry.id, (byte) 0, entry.title, entry.artist, entry.source, null, false, false, entry.redditPostId, null, entry.imgurId, null));
+        Path imageFile = legacyDir.resolve(entry.fileName);
+        String fileName = imageFile.getFileName().toString();
+        Post post = new Post(UUID.randomUUID(), fileName, entry.id, (byte) 0, entry.title, entry.artist, entry.source, null, false, false, entry.redditPostId, null, entry.imgurId, null);
+        app.getPosts().add(post);
+        try {
+          app.images().copy(imagesDir.resolve(fileName), post);
+        } catch (IOException e) {
+          DailyImagePoster.LOG.warn("Could not import image " + fileName, e);
+        }
       });
     } catch (IOException e) {
       DailyImagePoster.LOG.warn("Could not import legacy database", e);

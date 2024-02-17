@@ -1,9 +1,11 @@
-package me.whizvox.dailyimageposter.gui;
+package me.whizvox.dailyimageposter.gui.post;
 
 import me.whizvox.dailyimageposter.DailyImagePoster;
 import me.whizvox.dailyimageposter.db.Post;
+import me.whizvox.dailyimageposter.gui.ListPostsPanel;
 import me.whizvox.dailyimageposter.util.IOHelper;
 import me.whizvox.dailyimageposter.util.StringHelper;
+import me.whizvox.dailyimageposter.util.UIHelper;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
@@ -29,8 +31,7 @@ public class PostPanel extends JPanel {
       GAP_SIZE = 10,
       IMAGE_SIZE = 128;
 
-  private final DailyImagePoster app;
-
+  private final PostFrame parent;
   private final JLabel idLabel;
   private final JTextField numberField;
   private final JButton latestNumberButton;
@@ -57,8 +58,8 @@ public class PostPanel extends JPanel {
   private int imageWidth, imageHeight;
   private long imageSize;
 
-  public PostPanel() {
-    app = DailyImagePoster.getInstance();
+  public PostPanel(PostFrame parent) {
+    this.parent = parent;
     id = UUID.randomUUID();
     idLabel = new JLabel("ID: " + id);
     JLabel numberLabel = new JLabel("Number");
@@ -196,7 +197,7 @@ public class PostPanel extends JPanel {
       @Override
       public void mouseClicked(MouseEvent e) {
         if (selectedImage != null) {
-          JDialog dialog = new JDialog(app.mainFrame, "Image preview");
+          JDialog dialog = new JDialog(parent, "Image preview");
           JLabel imageLabel = new JLabel(new ImageIcon(selectedImage));
           dialog.add(imageLabel);
           dialog.pack();
@@ -249,7 +250,7 @@ public class PostPanel extends JPanel {
     artistField.setText(Objects.requireNonNullElse(post.artist(), ""));
     sourceField.setText(Objects.requireNonNullElse(post.source(), ""));
     commentField.setText(Objects.requireNonNullElse(post.comment(), ""));
-    postNsfwBox.setSelected(post.postNsfw());
+    postNsfwBox.setSelected(post.imageNsfw());
     sourceNsfwBox.setSelected(post.sourceNsfw());
     boolean enablePostButton = post.whenPosted() == null;
     postButton.setEnabled(enablePostButton);
@@ -257,11 +258,11 @@ public class PostPanel extends JPanel {
 
   private void checkTitle() {
     String title = titleField.getText();
-    List<Post> posts = app.getPosts().searchTitle(title);
+    List<Post> posts = DailyImagePoster.getInstance().getPosts().searchTitle(title);
     if (posts.isEmpty()) {
       JOptionPane.showMessageDialog(this, "No posts found", "No posts found", JOptionPane.INFORMATION_MESSAGE);
     } else {
-      JDialog dialog = new JDialog(app.mainFrame, "Posts found");
+      JDialog dialog = new JDialog(parent, "Posts found");
       dialog.setContentPane(new ListPostsPanel(posts));
       dialog.setVisible(true);
     }
@@ -282,16 +283,7 @@ public class PostPanel extends JPanel {
     imageHeight = image.getHeight();
     imageSize = file.length();
     imageInfoLabel.setText(StringHelper.formatBytesLength(imageSize) + " | " + imageWidth + "x" + imageHeight);
-    float ratio = (float) image.getWidth() / image.getHeight();
-    int width, height;
-    if (ratio > 1) {
-      width = IMAGE_SIZE;
-      height = (int) (IMAGE_SIZE / ratio);
-    } else {
-      width = (int) (IMAGE_SIZE * ratio);
-      height = IMAGE_SIZE;
-    }
-    imagePreviewLabel.setIcon(new ImageIcon(image.getScaledInstance(width, height, Image.SCALE_SMOOTH)));
+    UIHelper.updateImageLabel(imagePreviewLabel, image, IMAGE_SIZE);
   }
 
 }

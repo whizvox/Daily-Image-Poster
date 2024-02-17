@@ -1,8 +1,10 @@
-package me.whizvox.dailyimageposter.gui;
+package me.whizvox.dailyimageposter.gui.search;
 
 import com.github.lgooddatepicker.components.DateTimePicker;
 import me.whizvox.dailyimageposter.DailyImagePoster;
 import me.whizvox.dailyimageposter.db.Post;
+import me.whizvox.dailyimageposter.gui.PostTableModel;
+import me.whizvox.dailyimageposter.gui.ViewPostPanel;
 
 import javax.swing.*;
 import java.time.LocalDateTime;
@@ -15,6 +17,7 @@ import static me.whizvox.dailyimageposter.DailyImagePoster.GAP_SIZE;
 
 public class SearchPostsPanel extends JPanel {
 
+  private final SearchPostsFrame parent;
   private final JTextField minNumberField;
   private final JTextField maxNumberField;
   private final JTextField titleField;
@@ -30,7 +33,8 @@ public class SearchPostsPanel extends JPanel {
 
   private Post selectedPost;
 
-  public SearchPostsPanel(Runnable close) {
+  public SearchPostsPanel(SearchPostsFrame parent) {
+    this.parent = parent;
     JLabel minNumberLabel = new JLabel("Min Number");
     minNumberField = new JTextField();
     JLabel maxNumberLabel = new JLabel("Max Number");
@@ -192,14 +196,17 @@ public class SearchPostsPanel extends JPanel {
       viewButton.setEnabled(false);
     });
     resultsTable.getSelectionModel().addListSelectionListener(e -> {
-      selectedPost = tableModel.getPost(e.getFirstIndex());
+      selectedPost = tableModel.getPost(((ListSelectionModel) e.getSource()).getLeadSelectionIndex());
       viewButton.setEnabled(true);
       DailyImagePoster.LOG.debug("SELECTED POST: {}", selectedPost);
     });
     viewButton.addActionListener(event -> {
       if (selectedPost != null) {
-        DailyImagePoster.getInstance().mainFrame.getPanel().updatePost(selectedPost);
-        close.run();
+        JDialog dialog = new JDialog(parent, "View", false);
+        dialog.setContentPane(new ViewPostPanel(selectedPost));
+        dialog.pack();
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
       }
     });
   }
