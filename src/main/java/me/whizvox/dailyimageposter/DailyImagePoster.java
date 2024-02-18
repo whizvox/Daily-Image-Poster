@@ -6,10 +6,15 @@ import me.whizvox.dailyimageposter.db.PostRepository;
 import me.whizvox.dailyimageposter.gui.post.PostFrame;
 import me.whizvox.dailyimageposter.legacy.ImportLegacyDatabase;
 import me.whizvox.dailyimageposter.reddit.RedditClient;
+import me.whizvox.dailyimageposter.reddit.RedditClientProperties;
+import me.whizvox.dailyimageposter.util.StringHelper;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.swing.*;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.Reader;
@@ -24,9 +29,7 @@ import java.util.function.Supplier;
 
 public class DailyImagePoster {
 
-  public static final int GAP_SIZE = 10;
-
-  public static final Logger LOG = LoggerFactory.getLogger(DailyImagePoster.class);
+  public static final Logger LOG = LoggerFactory.getLogger("DailyImagePoster");
 
   public static final String
       PROP_CLIENT_ID = "client.clientId",
@@ -103,12 +106,36 @@ public class DailyImagePoster {
     posts.create();
   }
 
-  public RedditClient getClient() {
+  @Nullable
+  public RedditClient getRedditClient() {
     return client;
   }
 
-  public void setClient(RedditClient client) {
-    this.client = client;
+  public void updateRedditClient() {
+    if (client != null && client.hasAccessToken()) {
+      client.revokeToken();
+    }
+    client = null;
+    RedditClientProperties props = new RedditClientProperties(
+        preferences.getProperty(PROP_CLIENT_ID),
+        preferences.getProperty(PROP_CLIENT_SECRET),
+        preferences.getProperty(PROP_USER_AGENT),
+        preferences.getProperty(PROP_USERNAME),
+        preferences.getProperty(PROP_PASSWORD)
+    );
+    if (StringHelper.isNullOrBlank(props.clientId()) || StringHelper.isNullOrBlank(props.clientSecret()) ||
+        StringHelper.isNullOrBlank(props.userAgent()) || StringHelper.isNullOrBlank(props.username()) ||
+        StringHelper.isNullOrBlank(props.password())) {
+      LOG.info("Reddit client not updated, not all credentials fields are set");
+    } else {
+      client = new RedditClient(props);
+      client.fetchAccessToken()
+          .thenRun(() -> LOG.info("Access token successfully retrieved"))
+          .exceptionally(e -> {
+            LOG.warn("Could not retrieve access token", e);
+            return null;
+          });
+    }
   }
 
   public PostRepository getPosts() {
@@ -117,6 +144,27 @@ public class DailyImagePoster {
 
   public ImageManager images() {
     return imageManager;
+  }
+
+  private void close() {
+    try {
+      backupManager.saveMetaData();
+    } catch (IOException e) {
+      LOG.warn("Could not save backup metadata", e);
+    }
+    try {
+      conn.close();
+    } catch (SQLException e) {
+      LOG.warn("Could not close database connection", e);
+    }
+    if (client != null && client.hasAccessToken()) {
+      client.revokeToken().thenRun(() -> {
+        LOG.info("Access token successfully revoked");
+      }).exceptionally(e -> {
+        LOG.warn("Could not revoke access token", e);
+        return null;
+      }).join(); // wait for thread to finish
+    }
   }
 
   public void changeFrame(Supplier<JFrame> frameSupplier, String title) {
@@ -131,20 +179,14 @@ public class DailyImagePoster {
     } else {
       currentFrame.setTitle(title + " | Daily Image Poster");
     }
+    currentFrame.addWindowListener(new WindowAdapter() {
+      @Override
+      public void windowClosing(WindowEvent e) {
+        // don't close resources unless window has been closed by user
+        close();
+      }
+    });
     currentFrame.setVisible(true);
-  }
-
-  public void close() {
-    try {
-      backupManager.saveMetaData();
-    } catch (IOException e) {
-      LOG.warn("Could not save backup metadata", e);
-    }
-    try {
-      conn.close();
-    } catch (SQLException e) {
-      LOG.warn("Could not close database connection", e);
-    }
   }
 
   private static DailyImagePoster instance = null;
@@ -156,24 +198,22 @@ public class DailyImagePoster {
   public static void main(String[] args) {
     instance = new DailyImagePoster();
     instance.loadPreferences();
+    instance.updateRedditClient();
     try {
       instance.initDatabase("dip.db");
     } catch (SQLException e) {
       throw new RuntimeException("Could not initialize database", e);
     }
     instance.changeFrame(PostFrame::new, null);
-    /*instance.currentFrame.addWindowListener(new WindowAdapter() {
-      @Override
-      public void windowClosed(WindowEvent e) {
-        instance.close();
-      }
-    });*/
     // import my not-public database schema. this, along with the legacy package will be deleted at some point
     String legacyDirStr = null;
+    boolean addAllLegacyFiles = false;
     for (String arg : args) {
       if (arg.startsWith("--legacydir=")) {
         legacyDirStr = arg.substring(12);
-        break;
+      }
+      if (arg.equals("--legacyaddall")) {
+        addAllLegacyFiles = true;
       }
     }
     if (legacyDirStr != null) {
@@ -181,7 +221,7 @@ public class DailyImagePoster {
       if (Files.exists(legacyDir) && Files.isDirectory(legacyDir)) {
         LOG.info("Importing legacy database...");
         ImportLegacyDatabase run = new ImportLegacyDatabase();
-        run.importLegacy(legacyDir);
+        run.importLegacy(legacyDir, !addAllLegacyFiles);
       } else {
         LOG.warn("Provided legacy directory is not valid: {}", legacyDirStr);
       }

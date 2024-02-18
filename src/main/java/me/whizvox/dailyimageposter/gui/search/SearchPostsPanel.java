@@ -13,7 +13,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static me.whizvox.dailyimageposter.DailyImagePoster.GAP_SIZE;
+import static me.whizvox.dailyimageposter.util.UIHelper.GAP_SIZE;
 
 public class SearchPostsPanel extends JPanel {
 

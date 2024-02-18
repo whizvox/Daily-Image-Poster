@@ -3,6 +3,7 @@ package me.whizvox.dailyimageposter.gui.post;
 import me.whizvox.dailyimageposter.DailyImagePoster;
 import me.whizvox.dailyimageposter.db.Post;
 import me.whizvox.dailyimageposter.gui.ListPostsPanel;
+import me.whizvox.dailyimageposter.reddit.RedditClient;
 import me.whizvox.dailyimageposter.util.IOHelper;
 import me.whizvox.dailyimageposter.util.StringHelper;
 import me.whizvox.dailyimageposter.util.UIHelper;
@@ -25,11 +26,11 @@ import java.util.Objects;
 import java.util.TooManyListenersException;
 import java.util.UUID;
 
+import static me.whizvox.dailyimageposter.util.UIHelper.GAP_SIZE;
+
 public class PostPanel extends JPanel {
 
-  public static final int
-      GAP_SIZE = 10,
-      IMAGE_SIZE = 128;
+  public static final int IMAGE_SIZE = 128;
 
   private final PostFrame parent;
   private final JLabel idLabel;
@@ -57,6 +58,7 @@ public class PostPanel extends JPanel {
   private File lastSelectedDir;
   private int imageWidth, imageHeight;
   private long imageSize;
+  private Timer checkRedditClientStatusTimer;
 
   public PostPanel(PostFrame parent) {
     this.parent = parent;
@@ -214,6 +216,8 @@ public class PostPanel extends JPanel {
         updateImage(chooser.getSelectedFile());
       }
     });
+    checkRedditClientStatusTimer = new Timer(1000, e -> checkRedditClientStatus());
+    checkRedditClientStatusTimer.start();
 
     setDropTarget(new DropTarget());
     try {
@@ -284,6 +288,25 @@ public class PostPanel extends JPanel {
     imageSize = file.length();
     imageInfoLabel.setText(StringHelper.formatBytesLength(imageSize) + " | " + imageWidth + "x" + imageHeight);
     UIHelper.updateImageLabel(imagePreviewLabel, image, IMAGE_SIZE);
+  }
+
+  private void checkRedditClientStatus() {
+    DailyImagePoster app = DailyImagePoster.getInstance();
+    RedditClient client = app.getRedditClient();
+    if (client == null) {
+      noCredentialsLabel.setText("Reddit Credentials are not set! Go to File > Preferences to set them.");
+      noCredentialsLabel.setForeground(Color.RED);
+      postButton.setEnabled(false);
+    } else {
+      if (client.hasAccessToken()) {
+        noCredentialsLabel.setText("");
+        postButton.setEnabled(true);
+      } else {
+        noCredentialsLabel.setText("Fetching access token...");
+        noCredentialsLabel.setForeground(Color.DARK_GRAY);
+        postButton.setEnabled(false);
+      }
+    }
   }
 
 }

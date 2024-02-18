@@ -144,9 +144,9 @@ public class CredentialsPrefsPanel extends AbstractPrefsPanel {
   @Override
   public void saveChanges(Properties props) {
     props.setProperty(DailyImagePoster.PROP_CLIENT_ID, clientIdField.getText());
-    props.setProperty(DailyImagePoster.PROP_CLIENT_SECRET, clientSecretField.getText());
+    props.setProperty(DailyImagePoster.PROP_CLIENT_SECRET, new String(clientSecretField.getPassword()));
     props.setProperty(DailyImagePoster.PROP_USERNAME, usernameField.getText());
-    props.setProperty(DailyImagePoster.PROP_PASSWORD, passwordField.getText());
+    props.setProperty(DailyImagePoster.PROP_PASSWORD, new String(passwordField.getPassword()));
     props.setProperty(DailyImagePoster.PROP_USER_AGENT, userAgentField.getText());
   }
 

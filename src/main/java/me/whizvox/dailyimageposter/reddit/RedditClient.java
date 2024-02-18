@@ -3,15 +3,16 @@ package me.whizvox.dailyimageposter.reddit;
 import me.whizvox.dailyimageposter.DailyImagePoster;
 import me.whizvox.dailyimageposter.exception.UnexpectedResponseException;
 import me.whizvox.dailyimageposter.util.JsonHelper;
+import org.jetbrains.annotations.Nullable;
 
-import java.net.Authenticator;
-import java.net.PasswordAuthentication;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Base64;
 import java.util.Map;
 import java.util.Properties;
@@ -22,19 +23,16 @@ public class RedditClient {
 
   private static final String
       API_BASE = "https://www.reddit.com/api/v1/",
-      OAUTH_BASE = "https://oauth.reddit.com/api/v1/",
+      OAUTH_BASE = "https://oauth.reddit.com/api/",
       GET = "GET",
       POST = "POST",
       PUT = "PUT",
       DELETE = "DELETE";
-
-  private static String wwwUrl(String base) {
-    return API_BASE + base;
-  }
-
-  private static String oauthUrl(String base) {
-    return OAUTH_BASE + base;
-  }
+  private static final String
+      EP_ACCESS_TOKEN = API_BASE + "access_token",
+      EP_REVOKE_TOKEN = API_BASE + "revoke_token",
+      EP_ME = OAUTH_BASE + "v1/me",
+      EP_MEDIA_ASSET = OAUTH_BASE + "media/asset.json";
 
   private final RedditClientProperties props;
   private final HttpClient client;
@@ -72,6 +70,9 @@ public class RedditClient {
   }
 
   private String bearerAuth() {
+    if (accessToken == null) {
+      throw new IllegalStateException("Cannot perform OAuth request without access token");
+    }
     return "Bearer " + accessToken.accessToken;
   }
 
@@ -128,7 +129,7 @@ public class RedditClient {
         "username", props.username(),
         "password", props.password()
     );
-    HttpRequest req = builder(wwwUrl("access_token"), POST, args, null, basicAuth()).build();
+    HttpRequest req = builder(EP_ACCESS_TOKEN, POST, args, null, basicAuth()).build();
     return send(req, AccessToken.class)
         .thenAccept(accessToken -> this.accessToken = accessToken);
   }
@@ -141,14 +142,54 @@ public class RedditClient {
         "token", accessToken.accessToken,
         "token_type_hint", "access_token"
     );
-    HttpRequest req = builder(wwwUrl("revoke_token"), POST, args, null, basicAuth()).build();
+    HttpRequest req = builder(EP_REVOKE_TOKEN, POST, args, null, basicAuth()).build();
     return send(req, s -> null)
         .thenRun(() -> this.accessToken = null);
   }
 
   public CompletableFuture<Me> getMe() {
-    HttpRequest req = builder(oauthUrl("me"), GET, null, null, bearerAuth()).build();
+    HttpRequest req = builder(EP_ME, GET, null, null, bearerAuth()).build();
     return send(req, Me.class);
+  }
+
+  // fun fact: this isn't documented anywhere :))))))))))))
+  // had to look at PRAW's source code to figure this out
+
+  private static final Map<String, String> IMAGE_TYPES = Map.of(
+      "png", "image/png",
+      "jpg", "image/jpeg",
+      "jpeg", "image/jpeg"
+  );
+  public CompletableFuture<String> uploadImage(Path imageFile, @Nullable String type) {
+    if (type == null) {
+      String fileName = imageFile.getFileName().toString();
+      int extIndex = fileName.lastIndexOf('.');
+      if (extIndex == -1) {
+        throw new IllegalArgumentException("Image file name does not have an extension");
+      }
+      type = IMAGE_TYPES.get(fileName.substring(extIndex + 1));
+      if (type == null) {
+        throw new IllegalArgumentException("No type specified and unknown file extension: " + fileName);
+      }
+    } else {
+      if (IMAGE_TYPES.containsKey(type)) {
+        type = IMAGE_TYPES.get(type);
+      } else if (!IMAGE_TYPES.containsValue(type)) {
+        throw new IllegalArgumentException("Invalid image type: " + type);
+      }
+    }
+    if (!Files.exists(imageFile)) {
+      throw new IllegalArgumentException("Image file does not exist: " + imageFile);
+    }
+    if (!Files.isRegularFile(imageFile)) {
+      throw new IllegalArgumentException("Specified path is not a file: " + imageFile);
+    }
+    HttpRequest req = builder(EP_MEDIA_ASSET, "POST", Map.of(
+        "filepath", imageFile.getFileName().toString(),
+        "mimetype", type
+    ), null, bearerAuth()).build();
+    // TODO Figure out what this returns
+    return send(req, s -> s);
   }
 
   public void saveProperties(Properties props) {

@@ -38,4 +38,15 @@ public class StringHelper {
     return sb.toString();
   }
 
+  public static boolean isNullOrBlank(String s) {
+    return s == null || s.isBlank();
+  }
+
+  public static String withCutoff(String s, int maxLength) {
+    if (s.length() < maxLength) {
+      return s;
+    }
+    return s.substring(0, maxLength - 3) + "...";
+  }
+
 }

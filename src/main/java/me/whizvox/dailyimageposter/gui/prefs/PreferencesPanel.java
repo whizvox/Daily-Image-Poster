@@ -78,6 +78,7 @@ public class PreferencesPanel extends JPanel {
     DailyImagePoster app = DailyImagePoster.getInstance();
     app.preferences.putAll(prefsCopy);
     app.savePreferences();
+    app.updateRedditClient();
     unsavedChanges = false;
     saveButton.setEnabled(false);
   }
