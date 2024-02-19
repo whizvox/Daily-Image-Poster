@@ -4,6 +4,7 @@ import me.whizvox.dailyimageposter.DailyImagePoster;
 import me.whizvox.dailyimageposter.db.Post;
 import me.whizvox.dailyimageposter.gui.ListPostsPanel;
 import me.whizvox.dailyimageposter.reddit.RedditClient;
+import me.whizvox.dailyimageposter.reddit.SubmitOptions;
 import me.whizvox.dailyimageposter.util.IOHelper;
 import me.whizvox.dailyimageposter.util.StringHelper;
 import me.whizvox.dailyimageposter.util.UIHelper;
@@ -21,6 +22,8 @@ import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.Objects;
 import java.util.TooManyListenersException;
@@ -55,7 +58,7 @@ public class PostPanel extends JPanel {
 
   private UUID id;
   private BufferedImage selectedImage;
-  private File lastSelectedDir;
+  private Path selectedImageFile;
   private int imageWidth, imageHeight;
   private long imageSize;
   private Timer checkRedditClientStatusTimer;
@@ -95,7 +98,7 @@ public class PostPanel extends JPanel {
     noCredentialsLabel = new JLabel();
     postButton = new JButton("Post");
     selectedImage = null;
-    lastSelectedDir = new File(".");
+    selectedImageFile = null;
     imageWidth = imageHeight = 0;
     imageSize = 0L;
 
@@ -208,12 +211,35 @@ public class PostPanel extends JPanel {
       }
     });
     selectImageButton.addActionListener(event -> {
-      JFileChooser chooser = new JFileChooser(lastSelectedDir);
+      Path dir;
+      if (selectedImageFile == null) {
+        dir = Paths.get(".");
+      } else {
+        dir = selectedImageFile.getParent();
+      }
+      JFileChooser chooser = new JFileChooser(dir.toFile());
       FileNameExtensionFilter filter = new FileNameExtensionFilter("Images (*.png, *.jpeg, *.jpg)", "png", "jpeg", "jpg");
       chooser.setFileFilter(filter);
       int ret = chooser.showOpenDialog(this);
       if (ret == JFileChooser.APPROVE_OPTION) {
         updateImage(chooser.getSelectedFile());
+      }
+    });
+    postButton.addActionListener(event -> {
+      if (selectedImage != null) {
+        int response = JOptionPane.showConfirmDialog(this, "Are you sure you want to submit this?", "Confirm", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
+        if (response == JOptionPane.YES_OPTION) {
+          RedditClient client = DailyImagePoster.getInstance().getRedditClient();
+          if (client != null) {
+            client.uploadAndSubmitImage(selectedImageFile, null, new SubmitOptions().setSubreddit("u_whizvox").setTitle("test post pls ignore"), true).whenComplete((s, e) -> {
+              if (e == null) {
+                DailyImagePoster.LOG.info("Upload successful: {}", s);
+              } else {
+                DailyImagePoster.LOG.warn("Upload unsuccessful", e);
+              }
+            });
+          }
+        }
       }
     });
     checkRedditClientStatusTimer = new Timer(1000, e -> checkRedditClientStatus());
@@ -273,7 +299,7 @@ public class PostPanel extends JPanel {
   }
 
   private void updateImage(File file) {
-    lastSelectedDir = file.getParentFile();
+    selectedImageFile = file.toPath();
     BufferedImage image;
     try {
       image = ImageIO.read(file);
