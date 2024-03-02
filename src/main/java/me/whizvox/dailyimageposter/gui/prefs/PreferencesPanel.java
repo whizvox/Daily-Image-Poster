@@ -1,10 +1,12 @@
 package me.whizvox.dailyimageposter.gui.prefs;
 
 import me.whizvox.dailyimageposter.DailyImagePoster;
+import me.whizvox.dailyimageposter.gui.DocumentChangedListener;
 
 import javax.swing.*;
-
-import java.util.Properties;
+import javax.swing.text.JTextComponent;
+import java.util.HashMap;
+import java.util.Map;
 
 import static me.whizvox.dailyimageposter.util.UIHelper.GAP_SIZE;
 
@@ -14,7 +16,7 @@ public class PreferencesPanel extends JPanel {
   private AbstractPrefsPanel currentPrefsPanel;
   private final JButton saveButton;
 
-  private final Properties prefsCopy;
+  private final Map<String, Object> prefsCopy;
   private boolean unsavedChanges;
 
   public PreferencesPanel(PreferencesDialog parent) {
@@ -26,8 +28,8 @@ public class PreferencesPanel extends JPanel {
     saveButton = new JButton("Save");
     saveButton.setEnabled(false);
     JButton confirmButton = new JButton("Confirm");
-    prefsCopy = new Properties();
-    prefsCopy.putAll(DailyImagePoster.getInstance().preferences);
+    prefsCopy = new HashMap<>();
+    DailyImagePoster.getInstance().preferences.forEach(prefsCopy::put);
     unsavedChanges = false;
 
     GroupLayout layout = new GroupLayout(this);
@@ -61,7 +63,7 @@ public class PreferencesPanel extends JPanel {
       switch (index) {
         case 0 -> changePrefsPanel(new GeneralPrefsPanel(this));
         case 1 -> changePrefsPanel(new BackupsPrefsPanel(this));
-        case 2 -> changePrefsPanel(new CredentialsPrefsPanel(this));
+        case 2 -> changePrefsPanel(new RedditPrefsPanel(this));
         default -> DailyImagePoster.LOG.warn("Invalid preferences selection: {}", index);
       }
     });
@@ -76,9 +78,9 @@ public class PreferencesPanel extends JPanel {
   public void saveAll() {
     currentPrefsPanel.saveChanges(prefsCopy);
     DailyImagePoster app = DailyImagePoster.getInstance();
-    app.preferences.putAll(prefsCopy);
-    app.savePreferences();
+    prefsCopy.forEach(app.preferences::setObject);
     app.updateRedditClient();
+    app.preferences.save();
     unsavedChanges = false;
     saveButton.setEnabled(false);
   }
@@ -96,6 +98,16 @@ public class PreferencesPanel extends JPanel {
   public void markUnsavedChanges() {
     unsavedChanges = true;
     saveButton.setEnabled(true);
+  }
+
+  public void addChangeListener(JTextComponent component) {
+    component.getDocument().addDocumentListener((DocumentChangedListener) event -> markUnsavedChanges());
+  }
+
+  public void addChangeListeners(JTextComponent... components) {
+    for (JTextComponent component : components) {
+      addChangeListener(component);
+    }
   }
 
 }

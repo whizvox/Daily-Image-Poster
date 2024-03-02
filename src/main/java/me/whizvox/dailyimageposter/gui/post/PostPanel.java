@@ -8,8 +8,10 @@ import me.whizvox.dailyimageposter.reddit.SubmitOptions;
 import me.whizvox.dailyimageposter.util.IOHelper;
 import me.whizvox.dailyimageposter.util.StringHelper;
 import me.whizvox.dailyimageposter.util.UIHelper;
+import org.stringtemplate.v4.ST;
 
 import javax.imageio.ImageIO;
+import javax.swing.Timer;
 import javax.swing.*;
 import javax.swing.border.StrokeBorder;
 import javax.swing.filechooser.FileNameExtensionFilter;
@@ -25,9 +27,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
-import java.util.Objects;
-import java.util.TooManyListenersException;
-import java.util.UUID;
+import java.util.*;
 
 import static me.whizvox.dailyimageposter.util.UIHelper.GAP_SIZE;
 
@@ -231,11 +231,40 @@ public class PostPanel extends JPanel {
         if (response == JOptionPane.YES_OPTION) {
           RedditClient client = DailyImagePoster.getInstance().getRedditClient();
           if (client != null) {
-            client.uploadAndSubmitImage(selectedImageFile, null, new SubmitOptions().setSubreddit("u_whizvox").setTitle("test post pls ignore"), true).whenComplete((s, e) -> {
-              if (e == null) {
-                DailyImagePoster.LOG.info("Upload successful: {}", s);
+            Map<String, Object> args = Map.of(
+                "number", numberField.getText(),
+                "title", titleField.getText(),
+                "artist", artistField.getText(),
+                "source", sourceField.getText(),
+                "comment", commentField.getText(),
+                "postNsfw", postNsfwBox.isSelected(),
+                "sourceNsfw", sourceNsfwBox.isSelected()
+            );
+            DailyImagePoster app = DailyImagePoster.getInstance();
+            String subreddit = app.preferences.getString(DailyImagePoster.PREF_SUBREDDIT_NAME);
+            ST titleTemplate = new ST(app.preferences.getString(DailyImagePoster.PREF_TITLE_FORMAT));
+            args.forEach(titleTemplate::add);
+            String title = titleTemplate.render();
+            ST commentTemplate = new ST(app.preferences.getString(DailyImagePoster.PREF_COMMENT_FORMAT));
+            args.forEach(commentTemplate::add);
+            String comment = commentTemplate.render();
+            client.uploadAndSubmitImage(selectedImageFile, null, new SubmitOptions()
+                .setSubreddit(subreddit)
+                .setNsfw(postNsfwBox.isSelected())
+                //.setFlairId()
+                .setTitle(title), true).whenComplete((submissionUrl, ex) -> {
+              if (ex == null) {
+                DailyImagePoster.LOG.info("Link submission successful: {}", submissionUrl);
+                String linkId = StringHelper.getRedditLinkId(submissionUrl);
+                client.submitComment("t3_" + linkId, comment).whenComplete((s, ex2) -> {
+                  if (ex2 == null) {
+                    DailyImagePoster.LOG.info("Comment submission successful: {}", s);
+                  } else {
+                    DailyImagePoster.LOG.warn("Comment post unsuccessful", ex2);
+                  }
+                });
               } else {
-                DailyImagePoster.LOG.warn("Upload unsuccessful", e);
+                DailyImagePoster.LOG.warn("Upload unsuccessful", ex);
               }
             });
           }

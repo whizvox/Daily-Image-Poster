@@ -1,7 +1,12 @@
 package me.whizvox.dailyimageposter.util;
 
+import org.jetbrains.annotations.Nullable;
+
+import java.net.http.HttpResponse;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class StringHelper {
 
@@ -47,6 +52,52 @@ public class StringHelper {
       return s;
     }
     return s.substring(0, maxLength - 3) + "...";
+  }
+
+  public static String responseToString(HttpResponse<?> response) {
+    return response.uri() + " -> [" + response.statusCode() + "] " + response.body();
+  }
+
+  public static String[] getFileNameBaseAndExtension(String fileName) {
+    int indexOf = fileName.lastIndexOf('.');
+    if (indexOf != -1) {
+      return new String[] { fileName.substring(0, indexOf), fileName.substring(indexOf) };
+    }
+    return new String[] { fileName, "" };
+  }
+
+  public static String getFileNameWithoutExtension(String fileName) {
+    return getFileNameBaseAndExtension(fileName)[0];
+  }
+
+  public static String getFileNameExtension(String fileName) {
+    return getFileNameBaseAndExtension(fileName)[1];
+  }
+
+  private static final Pattern PATTERN_SUBMISSION_URL = Pattern.compile("https://www\\.reddit\\.com/r/(\\w+)/comments/(\\w+)/(\\w*)");
+
+  /**
+   * Split a Reddit submission URL into 3 parts: 1) subreddit name, 2) link ID, 3) slug.
+   * @param submissionUrl The submission URL. MUST be formatted like so:
+   *                      <code>https://www.reddit.com/r/&lt;subreddit>/comments/&lt;linkId>/&lt;slug></code>.
+   * @return A string array containing each part. <code>[0]</code> = subreddit name, <code>[1]</code> = link ID,
+   * <code>[2]</code> = slug
+   */
+  public static String[] getRedditLinkParts(String submissionUrl) {
+    Matcher matcher = PATTERN_SUBMISSION_URL.matcher(submissionUrl);
+    if (matcher.groupCount() > 2) {
+      return new String[] { matcher.group(1), matcher.group(2), matcher.group(3) };
+    }
+    return new String[0];
+  }
+
+  @Nullable
+  public static String getRedditLinkId(String submissionUrl) {
+    String[] parts = getRedditLinkParts(submissionUrl);
+    if (parts.length == 0) {
+      return null;
+    }
+    return parts[1];
   }
 
 }

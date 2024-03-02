@@ -1,11 +1,15 @@
 package me.whizvox.dailyimageposter.reddit;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.github.mizosoft.methanol.Methanol;
 import com.github.mizosoft.methanol.MultipartBodyPublisher;
 import com.github.mizosoft.methanol.MutableRequest;
 import me.whizvox.dailyimageposter.DailyImagePoster;
 import me.whizvox.dailyimageposter.exception.UnexpectedResponseException;
+import me.whizvox.dailyimageposter.reddit.pojo.*;
 import me.whizvox.dailyimageposter.util.JsonHelper;
+import me.whizvox.dailyimageposter.util.StringHelper;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.FileNotFoundException;
@@ -19,9 +23,11 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicReference;
@@ -43,12 +49,15 @@ public class RedditClient {
       EP_REVOKE_TOKEN = WWW_BASE + "v1/revoke_token",
       EP_ME = OAUTH_BASE + "v1/me",
       EP_MEDIA_ASSET = OAUTH_BASE + "media/asset.json",
-      EP_SUBMIT = OAUTH_BASE + "submit";
+      EP_SUBMIT = OAUTH_BASE + "submit",
+      EP_INFO = OAUTH_BASE + "info",
+      EP_COMMENT = OAUTH_BASE + "comment";
 
   private final RedditClientProperties props;
   private final Methanol client;
 
   private AccessToken accessToken;
+  private LocalDateTime accessTokenExpires;
 
   public RedditClient(RedditClientProperties props) {
     this.props = props;
@@ -106,6 +115,14 @@ public class RedditClient {
     return accessToken != null;
   }
 
+  public boolean isAccessTokenExpired() {
+    return accessToken != null && accessTokenExpires.isBefore(LocalDateTime.now());
+  }
+
+  public boolean accessTokenMatches(String accessToken) {
+    return Objects.equals(this.accessToken.accessToken, accessToken);
+  }
+
   private MutableRequest builder(String uri, String method, Map<String, Object> args, String contentType, String authorization) {
     boolean hasArgs = args != null && !args.isEmpty();
     URI actualUri;
@@ -139,21 +156,46 @@ public class RedditClient {
     return req;
   }
 
+  private <T> T handleResponse(HttpResponse<String> response, Function<String, T> func, int maxAttempts, int attempts) {
+    if (attempts > maxAttempts) {
+      throw new UnexpectedResponseException(response);
+    }
+    DailyImagePoster.LOG.debug("Response received: {}", StringHelper.responseToString(response));
+    if (response.statusCode() / 100 != 2) {
+      DailyImagePoster.LOG.warn("Unexpected response received, trying again: {}", StringHelper.responseToString(response));
+      return handleResponse(response, func, maxAttempts, attempts + 1);
+    }
+    return func.apply(response.body());
+  }
+
   private <T> CompletableFuture<T> send(HttpRequest req, Function<String, T> func) {
-    return client.sendAsync(req, HttpResponse.BodyHandlers.ofString())
-        .thenApply(res -> {
-          if (res.statusCode() / 100 != 2) {
-            throw new UnexpectedResponseException(res);
-          }
-          return func.apply(res.body());
-        });
+    // update access token if expired
+    CompletableFuture<?> first;
+    if (isAccessTokenExpired()) {
+      DailyImagePoster.LOG.info("Access token expired, queueing attempt to retrieve another one");
+      first = fetchAccessToken();
+    } else {
+      first = CompletableFuture.completedFuture(null);
+    }
+    return first.thenCompose(nil -> client.sendAsync(req, HttpResponse.BodyHandlers.ofString())
+        .thenApply(res -> handleResponse(res, func, 3, 0))
+    );
   }
 
   private <T> CompletableFuture<T> send(HttpRequest req, Class<T> cls) {
     return send(req, res -> JsonHelper.read(res, cls));
   }
 
-  public CompletableFuture<?> fetchAccessToken() {
+  public void setAccessToken(String accessToken, LocalDateTime expires) {
+    if (hasAccessToken()) {
+      throw new IllegalStateException("Cannot set access token unless first revoked");
+    }
+    this.accessToken = new AccessToken();
+    this.accessToken.accessToken = accessToken;
+    accessTokenExpires = expires;
+  }
+
+  public CompletableFuture<AccessToken> fetchAccessToken() {
     Map<String, Object> args = Map.of(
         "grant_type", "password",
         "username", props.username(),
@@ -161,7 +203,11 @@ public class RedditClient {
     );
     HttpRequest req = builder(EP_ACCESS_TOKEN, POST, args, null, basicAuth()).build();
     return send(req, AccessToken.class)
-        .thenAccept(accessToken -> this.accessToken = accessToken);
+        .thenApply(accessToken -> {
+          this.accessToken = accessToken;
+          accessTokenExpires = LocalDateTime.now().plusSeconds(accessToken.expiresIn);
+          return accessToken;
+        });
   }
 
   public CompletableFuture<?> revokeToken() {
@@ -278,10 +324,43 @@ public class RedditClient {
           }
           ws.sendClose(1000, "received data, no longer needed");
           DailyImagePoster.LOG.debug("Websocket closed");
-          return message.get();
+          try {
+            String msg = message.get();
+            JsonNode root = JsonHelper.OBJECT_MAPPER.readTree(msg);
+            if (!root.get("type").asText().equals("success")) {
+              throw new RuntimeException("Unexpected websocket response: " + msg);
+            }
+            return root.get("payload").get("redirect").asText();
+          } catch (JsonProcessingException e) {
+            throw new RuntimeException("Could not parse websocket response", e);
+          }
         }
       });
     });
+  }
+
+  public CompletableFuture<String> submitComment(String fullname, String comment) {
+    Map<String, Object> args = Map.of(
+        "thing_id", fullname,
+        "text", comment
+    );
+    HttpRequest req = builder(EP_COMMENT, POST, args, null, bearerAuth()).build();
+    return send(req, s -> s);
+  }
+
+  public CompletableFuture<Link> getLink(String id) {
+    HttpRequest req = builder(EP_INFO, GET, Map.of("id", "t3_" + id), null, bearerAuth()).build();
+    return send(req, Link.class);
+  }
+
+  public CompletableFuture<Comment> getComment(String id) {
+    HttpRequest req = builder(EP_INFO, GET, Map.of("id", "t1_" + id), null, bearerAuth()).build();
+    return send(req, Comment.class);
+  }
+
+  public CompletableFuture<SubredditListing> getSubreddit(String name) {
+    HttpRequest req = builder(EP_INFO, GET, Map.of("sr_name", name), null, bearerAuth()).build();
+    return send(req, SubredditListing.class);
   }
 
 }

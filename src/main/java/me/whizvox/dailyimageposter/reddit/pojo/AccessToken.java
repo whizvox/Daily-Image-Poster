@@ -1,4 +1,4 @@
-package me.whizvox.dailyimageposter.reddit;
+package me.whizvox.dailyimageposter.reddit.pojo;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 

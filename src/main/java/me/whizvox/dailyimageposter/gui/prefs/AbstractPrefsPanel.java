@@ -1,7 +1,7 @@
 package me.whizvox.dailyimageposter.gui.prefs;
 
 import javax.swing.*;
-import java.util.Properties;
+import java.util.Map;
 
 public abstract class AbstractPrefsPanel extends JPanel {
 
@@ -11,6 +11,6 @@ public abstract class AbstractPrefsPanel extends JPanel {
     this.parent = parent;
   }
 
-  public abstract void saveChanges(Properties props);
+  public abstract void saveChanges(Map<String, Object> prefs);
 
 }

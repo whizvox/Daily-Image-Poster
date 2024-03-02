@@ -7,7 +7,9 @@ import me.whizvox.dailyimageposter.gui.post.PostFrame;
 import me.whizvox.dailyimageposter.legacy.ImportLegacyDatabase;
 import me.whizvox.dailyimageposter.reddit.RedditClient;
 import me.whizvox.dailyimageposter.reddit.RedditClientProperties;
+import me.whizvox.dailyimageposter.util.Preferences;
 import me.whizvox.dailyimageposter.util.StringHelper;
+import me.whizvox.dailyimageposter.util.UIHelper;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,15 +18,14 @@ import javax.swing.*;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.IOException;
-import java.io.OutputStream;
-import java.io.Reader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
-import java.util.Properties;
+import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.function.Supplier;
 
 public class DailyImagePoster {
@@ -32,25 +33,35 @@ public class DailyImagePoster {
   public static final Logger LOG = LoggerFactory.getLogger("DailyImagePoster");
 
   public static final String
-      PROP_CLIENT_ID = "client.clientId",
-      PROP_CLIENT_SECRET = "client.clientSecret",
-      PROP_USERNAME = "client.username",
-      PROP_PASSWORD = "client.password",
-      PROP_USER_AGENT = "client.userAgent";
+      PREF_ACCESS_TOKEN = "client.accessToken",
+      PREF_ACCESS_TOKEN_EXPIRES = "client.accessTokenExpires",
+      PREF_CLIENT_ID = "client.clientId",
+      PREF_CLIENT_SECRET = "client.clientSecret",
+      PREF_USERNAME = "client.username",
+      PREF_PASSWORD = "client.password",
+      PREF_USER_AGENT = "client.userAgent",
+      PREF_SUBREDDIT_NAME = "reddit.subreddit",
+      PREF_TITLE_FORMAT = "reddit.titleFormat",
+      PREF_COMMENT_FORMAT = "reddit.commentFormat",
+      PREF_FLAIR_ID = "reddit.flairId",
+      PREF_FLAIR_TEXT = "reddit.flairText",
+      PREF_IMAGE_QUALITY = "general.imageCompressionQuality",
+      PREF_MIN_IMAGE_DIMENSION = "general.imageMinDimension",
+      PREF_MAX_IMAGE_SIZE = "general.imageMaxSize";
 
-  private static Properties createDefaultProperties() {
-    Properties props = new Properties();
-    props.put(PROP_CLIENT_ID, "");
-    props.put(PROP_CLIENT_SECRET, "");
-    props.put(PROP_USERNAME, "");
-    props.put(PROP_PASSWORD, "");
-    props.put(PROP_USER_AGENT, "DailyImagePoster Script by whizvox");
-    return props;
-  }
+  private static final Map<String, Object> DEFAULT_PREFERENCES = Map.of(
+      PREF_USER_AGENT, "desktop:me.whizvox.dailyimageposter:v0.1 (by /u/whizvox)",
+      PREF_TITLE_FORMAT, "<title> | Daily Image #<number>",
+      PREF_COMMENT_FORMAT, "Artist: <artist>\nSource: <source><if(sourceNsfw)> **(NSFW Warning!)**<endif>\n<if(comment)>\n---\n<comment><endif>",
+      PREF_IMAGE_QUALITY, 90,
+      PREF_MIN_IMAGE_DIMENSION, 750,
+      PREF_MAX_IMAGE_SIZE, 1_100_000
+  );
 
+  private final DIPArguments arguments;
   private JFrame currentFrame;
-  public final Properties preferences;
-  private final Path prefsFile;
+  public final Preferences preferences;
+  private final Path tempDir;
 
   private RedditClient client;
   private Connection conn;
@@ -58,38 +69,20 @@ public class DailyImagePoster {
   private ImageManager imageManager;
   private BackupManager backupManager;
 
-  public DailyImagePoster() {
-    preferences = new Properties();
+  public DailyImagePoster(DIPArguments arguments) {
+    this.arguments = arguments;
+    preferences = new Preferences(Paths.get("dip.properties"), DEFAULT_PREFERENCES);
     client = null;
     conn = null;
     posts = null;
-    prefsFile = Paths.get("dip.properties");
+    tempDir = Paths.get("temp");
+    try {
+      Files.createDirectories(tempDir);
+    } catch (IOException e) {
+      throw new RuntimeException("Could not create temp directory", e);
+    }
     imageManager = new ImageManager(Paths.get("images"));
     backupManager = new BackupManager(Paths.get("backups"));
-  }
-
-  private void loadPreferences() {
-    if (Files.exists(prefsFile)) {
-      try (Reader reader = Files.newBufferedReader(prefsFile)) {
-        preferences.clear();
-        preferences.load(reader);
-      } catch (IOException e) {
-        LOG.warn("Could not read properties file", e);
-      }
-    } else {
-      preferences.clear();
-      preferences.putAll(createDefaultProperties());
-      savePreferences();
-    }
-  }
-
-  public void savePreferences() {
-    try (OutputStream out = Files.newOutputStream(prefsFile)) {
-      preferences.store(out, null);
-    } catch (IOException e) {
-      LOG.warn("Could not create default properties file", e);
-    }
-    LOG.info("Preferences saved");
   }
 
   private void initDatabase(String dbName) throws SQLException {
@@ -112,16 +105,28 @@ public class DailyImagePoster {
   }
 
   public void updateRedditClient() {
+    if (arguments.noReddit) {
+      LOG.debug("Reddit client disabled, so it will not be updated");
+      return;
+    }
+    // attempt to re-use previously stored access token
+    String accessToken = preferences.getString(PREF_ACCESS_TOKEN);
+    LocalDateTime accessTokenExpires = preferences.getDateTime(PREF_ACCESS_TOKEN_EXPIRES);
     if (client != null && client.hasAccessToken()) {
-      client.revokeToken();
+      if (client.isAccessTokenExpired()) {
+        client.revokeToken();
+        accessToken = null;
+      } else if (!client.accessTokenMatches(accessToken)) {
+        accessToken = null;
+      }
     }
     client = null;
     RedditClientProperties props = new RedditClientProperties(
-        preferences.getProperty(PROP_CLIENT_ID),
-        preferences.getProperty(PROP_CLIENT_SECRET),
-        preferences.getProperty(PROP_USER_AGENT),
-        preferences.getProperty(PROP_USERNAME),
-        preferences.getProperty(PROP_PASSWORD)
+        preferences.getString(PREF_CLIENT_ID),
+        preferences.getString(PREF_CLIENT_SECRET),
+        preferences.getString(PREF_USER_AGENT),
+        preferences.getString(PREF_USERNAME),
+        preferences.getString(PREF_PASSWORD)
     );
     if (StringHelper.isNullOrBlank(props.clientId()) || StringHelper.isNullOrBlank(props.clientSecret()) ||
         StringHelper.isNullOrBlank(props.userAgent()) || StringHelper.isNullOrBlank(props.username()) ||
@@ -129,13 +134,29 @@ public class DailyImagePoster {
       LOG.info("Reddit client not updated, not all credentials fields are set");
     } else {
       client = new RedditClient(props);
-      client.fetchAccessToken()
-          .thenRun(() -> LOG.info("Access token successfully retrieved"))
-          .exceptionally(e -> {
-            LOG.warn("Could not retrieve access token", e);
-            return null;
-          });
+      if (accessToken == null) {
+        LOG.info("Fetching access token from Reddit");
+        client.fetchAccessToken()
+            .thenAccept(token -> {
+              preferences.setString(PREF_ACCESS_TOKEN, token.accessToken);
+              // assume, at most, 5 seconds passed since the token has been granted
+              preferences.setDateTime(PREF_ACCESS_TOKEN_EXPIRES, LocalDateTime.now().plusSeconds(token.expiresIn - 5));
+              preferences.save();
+              LOG.info("Access token successfully retrieved");
+            })
+            .exceptionally(e -> {
+              LOG.warn("Could not retrieve access token", e);
+              return null;
+            });
+      } else {
+        LOG.debug("Re-using previous Reddit access token");
+        client.setAccessToken(accessToken, accessTokenExpires);
+      }
     }
+  }
+
+  public Path getTempPath(String fileName) {
+    return tempDir.resolve(fileName);
   }
 
   public PostRepository getPosts() {
@@ -157,7 +178,7 @@ public class DailyImagePoster {
     } catch (SQLException e) {
       LOG.warn("Could not close database connection", e);
     }
-    if (client != null && client.hasAccessToken()) {
+    if (arguments.autoRevokeRedditToken && client != null && client.hasAccessToken()) {
       client.revokeToken().thenRun(() -> {
         LOG.info("Access token successfully revoked");
       }).exceptionally(e -> {
@@ -165,6 +186,7 @@ public class DailyImagePoster {
         return null;
       }).join(); // wait for thread to finish
     }
+    preferences.save();
   }
 
   public void changeFrame(Supplier<JFrame> frameSupplier, String title) {
@@ -172,7 +194,6 @@ public class DailyImagePoster {
       currentFrame.dispose();
     }
     currentFrame = frameSupplier.get();
-    currentFrame.setLocationRelativeTo(null);
     currentFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
     if (title == null) {
       currentFrame.setTitle("Daily Image Poster");
@@ -186,6 +207,9 @@ public class DailyImagePoster {
         close();
       }
     });
+    UIHelper.addMenuBar(currentFrame);
+    currentFrame.pack();
+    currentFrame.setLocationRelativeTo(null);
     currentFrame.setVisible(true);
   }
 
@@ -196,8 +220,35 @@ public class DailyImagePoster {
   }
 
   public static void main(String[] args) {
-    instance = new DailyImagePoster();
-    instance.loadPreferences();
+    // import my not-public database schema. this, along with the legacy package will be deleted at some point
+    DIPArguments arguments = new DIPArguments();
+    for (String arg : args) {
+      if (arg.startsWith("--legacydir=")) {
+        arguments.legacyDir = arg.substring(12);
+      }
+      if (arg.equals("--legacyaddall")) {
+        arguments.importAllLegacy = true;
+      }
+      if (arg.equals("--noreddit")) {
+        arguments.noReddit = true;
+      }
+      if (arg.equals("--autorevokereddit")) {
+        arguments.autoRevokeRedditToken = true;
+      }
+    }
+    if (arguments.legacyDir != null) {
+      Path legacyDir = Paths.get(arguments.legacyDir);
+      if (Files.exists(legacyDir) && Files.isDirectory(legacyDir)) {
+        LOG.info("Importing legacy database...");
+        ImportLegacyDatabase run = new ImportLegacyDatabase();
+        run.importLegacy(legacyDir, !arguments.importAllLegacy);
+      } else {
+        LOG.warn("Provided legacy directory is not valid: {}", arguments.legacyDir);
+      }
+    }
+
+    instance = new DailyImagePoster(arguments);
+    instance.preferences.load();
     instance.updateRedditClient();
     try {
       instance.initDatabase("dip.db");
@@ -205,27 +256,7 @@ public class DailyImagePoster {
       throw new RuntimeException("Could not initialize database", e);
     }
     instance.changeFrame(PostFrame::new, null);
-    // import my not-public database schema. this, along with the legacy package will be deleted at some point
-    String legacyDirStr = null;
-    boolean addAllLegacyFiles = false;
-    for (String arg : args) {
-      if (arg.startsWith("--legacydir=")) {
-        legacyDirStr = arg.substring(12);
-      }
-      if (arg.equals("--legacyaddall")) {
-        addAllLegacyFiles = true;
-      }
-    }
-    if (legacyDirStr != null) {
-      Path legacyDir = Paths.get(legacyDirStr);
-      if (Files.exists(legacyDir) && Files.isDirectory(legacyDir)) {
-        LOG.info("Importing legacy database...");
-        ImportLegacyDatabase run = new ImportLegacyDatabase();
-        run.importLegacy(legacyDir, !addAllLegacyFiles);
-      } else {
-        LOG.warn("Provided legacy directory is not valid: {}", legacyDirStr);
-      }
-    }
+
   }
 
 }

@@ -1,17 +1,16 @@
 package me.whizvox.dailyimageposter.gui.prefs;
 
 import me.whizvox.dailyimageposter.DailyImagePoster;
-import me.whizvox.dailyimageposter.gui.DocumentChangedListener;
 import me.whizvox.dailyimageposter.reddit.RedditClient;
 import me.whizvox.dailyimageposter.reddit.RedditClientProperties;
 
 import javax.swing.*;
 import java.awt.*;
-import java.util.Properties;
+import java.util.Map;
 
 import static me.whizvox.dailyimageposter.util.UIHelper.GAP_SIZE;
 
-public class CredentialsPrefsPanel extends AbstractPrefsPanel {
+public class RedditPrefsPanel extends AbstractPrefsPanel {
 
   private final JTextField clientIdField;
   private final JPasswordField clientSecretField;
@@ -19,32 +18,48 @@ public class CredentialsPrefsPanel extends AbstractPrefsPanel {
   private final JPasswordField passwordField;
   private final JTextField userAgentField;
 
-  public CredentialsPrefsPanel(PreferencesPanel parent) {
+  private final JTextField subredditField;
+  private final JTextField flairIdField;
+  private final JTextField flairTextField;
+  private final JTextField titleFormatField;
+  private final JTextArea commentFormatField;
+
+  public RedditPrefsPanel(PreferencesPanel parent) {
     super(parent);
 
     DailyImagePoster app = DailyImagePoster.getInstance();
     JLabel clientIdLabel = new JLabel("Client ID");
-    clientIdField = new JTextField(app.preferences.getProperty(DailyImagePoster.PROP_CLIENT_ID));
+    clientIdField = new JTextField(app.preferences.getString(DailyImagePoster.PREF_CLIENT_ID));
     JLabel clientSecretLabel = new JLabel("Client Secret");
-    clientSecretField = new JPasswordField(app.preferences.getProperty(DailyImagePoster.PROP_CLIENT_SECRET));
+    clientSecretField = new JPasswordField(app.preferences.getString(DailyImagePoster.PREF_CLIENT_SECRET));
     JLabel usernameLabel = new JLabel("Username");
-    usernameField = new JTextField(app.preferences.getProperty(DailyImagePoster.PROP_USERNAME));
+    usernameField = new JTextField(app.preferences.getString(DailyImagePoster.PREF_USERNAME));
     JLabel passwordLabel = new JLabel("Password");
-    passwordField = new JPasswordField(app.preferences.getProperty(DailyImagePoster.PROP_PASSWORD));
+    passwordField = new JPasswordField(app.preferences.getString(DailyImagePoster.PREF_PASSWORD));
     JLabel userAgentLabel = new JLabel("User Agent");
-    userAgentField = new JTextField(app.preferences.getProperty(DailyImagePoster.PROP_USER_AGENT));
+    userAgentField = new JTextField(app.preferences.getString(DailyImagePoster.PREF_USER_AGENT));
     JCheckBox showSecretBox = new JCheckBox("Reveal secret fields");
     JButton testButton = new JButton("Test");
     JLabel testResultLabel = new JLabel("");
+    JSeparator separator = new JSeparator();
+    JLabel subredditLabel = new JLabel("Subreddit Name");
+    subredditField = new JTextField(app.preferences.getString(DailyImagePoster.PREF_SUBREDDIT_NAME));
+    JLabel flairIdLabel = new JLabel("Flair ID");
+    flairIdField = new JTextField(app.preferences.getString(DailyImagePoster.PREF_FLAIR_ID));
+    JLabel flairTextLabel = new JLabel("Flair Text");
+    flairTextField = new JTextField(app.preferences.getString(DailyImagePoster.PREF_FLAIR_TEXT));
+    JLabel titleFormatLabel = new JLabel("Title Format");
+    titleFormatField = new JTextField(app.preferences.getString(DailyImagePoster.PREF_TITLE_FORMAT));
+    JLabel commentFormatLabel = new JLabel("Comment Format");
+    commentFormatField = new JTextArea(app.preferences.getString(DailyImagePoster.PREF_COMMENT_FORMAT), 5, 50);
+    commentFormatField.setFont(Font.decode(Font.MONOSPACED));
 
     char echoChar = clientSecretField.getEchoChar();
     int fh = clientIdField.getPreferredSize().height;
 
-        GroupLayout layout = new GroupLayout(this);
+    GroupLayout layout = new GroupLayout(this);
     layout.setAutoCreateGaps(true);
     layout.setAutoCreateContainerGaps(true);
-    layout.setHorizontalGroup(layout.createParallelGroup());
-    setLayout(layout);
     layout.setHorizontalGroup(layout.createParallelGroup()
         .addComponent(clientIdLabel)
         .addComponent(clientIdField)
@@ -57,8 +72,19 @@ public class CredentialsPrefsPanel extends AbstractPrefsPanel {
         .addComponent(userAgentLabel)
         .addComponent(userAgentField)
         .addComponent(showSecretBox)
-        .addComponent(testButton, GroupLayout.Alignment.TRAILING)
-        .addComponent(testResultLabel, GroupLayout.Alignment.CENTER)
+        .addComponent(testButton)
+        .addComponent(testResultLabel)
+        .addComponent(separator)
+        .addComponent(subredditLabel)
+        .addComponent(subredditField)
+        .addComponent(flairIdLabel)
+        .addComponent(flairIdField)
+        .addComponent(flairTextLabel)
+        .addComponent(flairTextField)
+        .addComponent(titleFormatLabel)
+        .addComponent(titleFormatField)
+        .addComponent(commentFormatLabel)
+        .addComponent(commentFormatField)
     );
     layout.setVerticalGroup(layout.createSequentialGroup()
         .addComponent(clientIdLabel)
@@ -79,14 +105,28 @@ public class CredentialsPrefsPanel extends AbstractPrefsPanel {
         .addComponent(showSecretBox)
         .addComponent(testButton)
         .addComponent(testResultLabel)
+        .addComponent(separator)
+        .addComponent(subredditLabel)
+        .addComponent(subredditField)
+        .addGap(GAP_SIZE)
+        .addComponent(flairIdLabel)
+        .addComponent(flairIdField)
+        .addGap(GAP_SIZE)
+        .addComponent(flairTextLabel)
+        .addComponent(flairTextField)
+        .addGap(GAP_SIZE)
+        .addComponent(titleFormatLabel)
+        .addComponent(titleFormatField)
+        .addGap(GAP_SIZE)
+        .addComponent(commentFormatLabel)
+        .addComponent(commentFormatField)
     );
     setLayout(layout);
 
-    clientIdField.getDocument().addDocumentListener((DocumentChangedListener) event -> parent.markUnsavedChanges());
-    clientSecretField.getDocument().addDocumentListener((DocumentChangedListener) event -> parent.markUnsavedChanges());
-    usernameField.getDocument().addDocumentListener((DocumentChangedListener) event -> parent.markUnsavedChanges());
-    passwordField.getDocument().addDocumentListener((DocumentChangedListener) event -> parent.markUnsavedChanges());
-    userAgentField.getDocument().addDocumentListener((DocumentChangedListener) event -> parent.markUnsavedChanges());
+    parent.addChangeListeners(
+        clientIdField, clientSecretField, usernameField, userAgentField, subredditField, flairIdField, flairTextField,
+        titleFormatField, commentFormatField
+    );
 
     showSecretBox.addChangeListener(event -> {
       if (showSecretBox.isSelected()) {
@@ -142,12 +182,17 @@ public class CredentialsPrefsPanel extends AbstractPrefsPanel {
   }
 
   @Override
-  public void saveChanges(Properties props) {
-    props.setProperty(DailyImagePoster.PROP_CLIENT_ID, clientIdField.getText());
-    props.setProperty(DailyImagePoster.PROP_CLIENT_SECRET, new String(clientSecretField.getPassword()));
-    props.setProperty(DailyImagePoster.PROP_USERNAME, usernameField.getText());
-    props.setProperty(DailyImagePoster.PROP_PASSWORD, new String(passwordField.getPassword()));
-    props.setProperty(DailyImagePoster.PROP_USER_AGENT, userAgentField.getText());
+  public void saveChanges(Map<String, Object> prefs) {
+    prefs.put(DailyImagePoster.PREF_CLIENT_ID, clientIdField.getText());
+    prefs.put(DailyImagePoster.PREF_CLIENT_SECRET, new String(clientSecretField.getPassword()));
+    prefs.put(DailyImagePoster.PREF_USERNAME, usernameField.getText());
+    prefs.put(DailyImagePoster.PREF_PASSWORD, new String(passwordField.getPassword()));
+    prefs.put(DailyImagePoster.PREF_USER_AGENT, userAgentField.getText());
+    prefs.put(DailyImagePoster.PREF_SUBREDDIT_NAME, subredditField.getText());
+    prefs.put(DailyImagePoster.PREF_FLAIR_ID, flairIdField.getText());
+    prefs.put(DailyImagePoster.PREF_FLAIR_TEXT, flairTextField.getText());
+    prefs.put(DailyImagePoster.PREF_TITLE_FORMAT, titleFormatField.getText());
+    prefs.put(DailyImagePoster.PREF_COMMENT_FORMAT, commentFormatField.getText());
   }
 
 }
