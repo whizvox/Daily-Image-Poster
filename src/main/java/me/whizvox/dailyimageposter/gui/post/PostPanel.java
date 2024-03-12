@@ -24,6 +24,8 @@ import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
@@ -59,6 +61,7 @@ public class PostPanel extends JPanel {
   private UUID id;
   private BufferedImage selectedImage;
   private Path selectedImageFile;
+  private Path lastSelectedDir;
   private int imageWidth, imageHeight;
   private long imageSize;
   private Timer checkRedditClientStatusTimer;
@@ -99,6 +102,7 @@ public class PostPanel extends JPanel {
     postButton = new JButton("Post");
     selectedImage = null;
     selectedImageFile = null;
+    lastSelectedDir = null;
     imageWidth = imageHeight = 0;
     imageSize = 0L;
 
@@ -210,67 +214,17 @@ public class PostPanel extends JPanel {
         }
       }
     });
-    selectImageButton.addActionListener(event -> {
-      Path dir;
-      if (selectedImageFile == null) {
-        dir = Paths.get(".");
-      } else {
-        dir = selectedImageFile.getParent();
-      }
-      JFileChooser chooser = new JFileChooser(dir.toFile());
-      FileNameExtensionFilter filter = new FileNameExtensionFilter("Images (*.png, *.jpeg, *.jpg)", "png", "jpeg", "jpg");
-      chooser.setFileFilter(filter);
-      int ret = chooser.showOpenDialog(this);
-      if (ret == JFileChooser.APPROVE_OPTION) {
-        updateImage(chooser.getSelectedFile());
-      }
-    });
-    postButton.addActionListener(event -> {
-      if (selectedImage != null) {
-        int response = JOptionPane.showConfirmDialog(this, "Are you sure you want to submit this?", "Confirm", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
-        if (response == JOptionPane.YES_OPTION) {
-          RedditClient client = DailyImagePoster.getInstance().getRedditClient();
-          if (client != null) {
-            Map<String, Object> args = Map.of(
-                "number", numberField.getText(),
-                "title", titleField.getText(),
-                "artist", artistField.getText(),
-                "source", sourceField.getText(),
-                "comment", commentField.getText(),
-                "postNsfw", postNsfwBox.isSelected(),
-                "sourceNsfw", sourceNsfwBox.isSelected()
-            );
-            DailyImagePoster app = DailyImagePoster.getInstance();
-            String subreddit = app.preferences.getString(DailyImagePoster.PREF_SUBREDDIT_NAME);
-            ST titleTemplate = new ST(app.preferences.getString(DailyImagePoster.PREF_TITLE_FORMAT));
-            args.forEach(titleTemplate::add);
-            String title = titleTemplate.render();
-            ST commentTemplate = new ST(app.preferences.getString(DailyImagePoster.PREF_COMMENT_FORMAT));
-            args.forEach(commentTemplate::add);
-            String comment = commentTemplate.render();
-            client.uploadAndSubmitImage(selectedImageFile, null, new SubmitOptions()
-                .setSubreddit(subreddit)
-                .setNsfw(postNsfwBox.isSelected())
-                //.setFlairId()
-                .setTitle(title), true).whenComplete((submissionUrl, ex) -> {
-              if (ex == null) {
-                DailyImagePoster.LOG.info("Link submission successful: {}", submissionUrl);
-                String linkId = StringHelper.getRedditLinkId(submissionUrl);
-                client.submitComment("t3_" + linkId, comment).whenComplete((s, ex2) -> {
-                  if (ex2 == null) {
-                    DailyImagePoster.LOG.info("Comment submission successful: {}", s);
-                  } else {
-                    DailyImagePoster.LOG.warn("Comment post unsuccessful", ex2);
-                  }
-                });
-              } else {
-                DailyImagePoster.LOG.warn("Upload unsuccessful", ex);
-              }
-            });
-          }
+    selectImageButton.addActionListener(event -> selectImage());
+    shrinkImageButton.addActionListener(event -> {
+      if (imageSize > 0 && imageSize < DailyImagePoster.getInstance().preferences.getInt(DailyImagePoster.PREF_MAX_IMAGE_SIZE)) {
+        int ret = JOptionPane.showConfirmDialog(this, "Are you sure you wish to shrink this image? It's already within an expected size.", "Confirm", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
+        if (ret != JOptionPane.YES_OPTION) {
+          return;
         }
+        shrinkImage();
       }
     });
+    postButton.addActionListener(event -> postImage());
     checkRedditClientStatusTimer = new Timer(1000, e -> checkRedditClientStatus());
     checkRedditClientStatusTimer.start();
 
@@ -288,7 +242,7 @@ public class PostPanel extends JPanel {
           try {
             List<File> droppedFiles = (List<File>) event.getTransferable().getTransferData(DataFlavor.javaFileListFlavor);
             if (!droppedFiles.isEmpty()) {
-              updateImage(droppedFiles.get(0));
+              updateImage(droppedFiles.get(0).toPath());
             }
           } catch (UnsupportedFlavorException | IOException e) {
             DailyImagePoster.LOG.warn("Could not perform drag-and-drop operation", e);
@@ -299,7 +253,6 @@ public class PostPanel extends JPanel {
     } catch (TooManyListenersException e) {
       throw new RuntimeException(e);
     }
-
   }
 
   public void updatePost(Post post) {
@@ -315,6 +268,22 @@ public class PostPanel extends JPanel {
     postButton.setEnabled(enablePostButton);
   }
 
+  private void selectImage() {
+    Path dir;
+    if (selectedImageFile == null) {
+      dir = Paths.get(".");
+    } else {
+      dir = selectedImageFile.getParent();
+    }
+    JFileChooser chooser = new JFileChooser(dir.toFile());
+    FileNameExtensionFilter filter = new FileNameExtensionFilter("Images (*.png, *.jpeg, *.jpg)", "png", "jpeg", "jpg");
+    chooser.setFileFilter(filter);
+    int ret = chooser.showOpenDialog(this);
+    if (ret == JFileChooser.APPROVE_OPTION) {
+      updateImage(chooser.getSelectedFile().toPath());
+    }
+  }
+
   private void checkTitle() {
     String title = titleField.getText();
     List<Post> posts = DailyImagePoster.getInstance().getPosts().searchTitle(title);
@@ -327,11 +296,12 @@ public class PostPanel extends JPanel {
     }
   }
 
-  private void updateImage(File file) {
-    selectedImageFile = file.toPath();
+  private void updateImage(Path imagePath) {
+    selectedImageFile = imagePath;
+    lastSelectedDir = selectedImageFile.getParent();
     BufferedImage image;
-    try {
-      image = ImageIO.read(file);
+    try (InputStream in = Files.newInputStream(selectedImageFile)) {
+      image = ImageIO.read(in);
     } catch (IOException e) {
       DailyImagePoster.LOG.warn("Could not read image", e);
       return;
@@ -340,9 +310,60 @@ public class PostPanel extends JPanel {
     selectedImage = image;
     imageWidth = image.getWidth();
     imageHeight = image.getHeight();
-    imageSize = file.length();
+    try {
+      imageSize = Files.size(imagePath);
+    } catch (IOException e) {
+      DailyImagePoster.LOG.warn("Could not get file size for " + imagePath, e);
+      imageSize = 0;
+    }
     imageInfoLabel.setText(StringHelper.formatBytesLength(imageSize) + " | " + imageWidth + "x" + imageHeight);
     UIHelper.updateImageLabel(imagePreviewLabel, image, IMAGE_SIZE);
+  }
+
+  private void shrinkImage() {
+    if (selectedImage == null) {
+      JOptionPane.showMessageDialog(this, "No image selected", null, JOptionPane.WARNING_MESSAGE);
+      return;
+    }
+    String[] parts = StringHelper.getFileNameBaseAndExtension(selectedImageFile.getFileName().toString());
+    Path newPath = DailyImagePoster.getInstance().getTempPath(parts[0] + "_compressed" + parts[1]);
+    int copyNumber = 0;
+    while (Files.exists(newPath)) {
+      copyNumber++;
+      newPath = DailyImagePoster.getInstance().getTempPath(parts[0] + "_compressed (" + copyNumber + ")" + parts[1]);
+    }
+    long origSize = imageSize;
+    int origWidth = selectedImage.getWidth();
+    Path origLastSelectedDir = lastSelectedDir;
+    int maxSize = DailyImagePoster.getInstance().preferences.getInt(DailyImagePoster.PREF_MAX_IMAGE_SIZE);
+    float quality = DailyImagePoster.getInstance().preferences.getInt(DailyImagePoster.PREF_IMAGE_QUALITY) / 100.0F;
+    long currentImageSize;
+    float currentWidth = imageWidth;
+    float currentHeight = imageHeight;
+    while (true) {
+      try {
+        IOHelper.saveAsJpeg(selectedImage, newPath, (int) currentWidth, (int) currentHeight, quality);
+        currentImageSize = Files.size(newPath);
+        DailyImagePoster.LOG.debug("Image shrink progress: path={}, size={}, dimensions={}x{}", newPath, currentImageSize, currentWidth, currentHeight);
+        if (currentImageSize > maxSize) {
+          currentWidth *= 0.95F;
+          currentHeight *= 0.95F;
+          Files.delete(newPath);
+        } else {
+          break;
+        }
+      } catch (IOException e) {
+        DailyImagePoster.LOG.warn("Could not shrink image", e);
+      }
+    }
+    updateImage(newPath);
+    lastSelectedDir = origLastSelectedDir;
+    double sizeDiff = (imageSize - origSize) / (double) origSize;
+    double dimensionDiff = (imageWidth - origWidth) / (double) origWidth;
+    JOptionPane.showMessageDialog(this, "Image shrunk to %s (%d%%) and %dx%d (%d%%)".formatted(
+        StringHelper.formatBytesLength(imageSize), (int) (sizeDiff * 100), imageWidth, imageHeight,
+        (int) (dimensionDiff * 100))
+    );
   }
 
   private void checkRedditClientStatus() {
@@ -360,6 +381,53 @@ public class PostPanel extends JPanel {
         noCredentialsLabel.setText("Fetching access token...");
         noCredentialsLabel.setForeground(Color.DARK_GRAY);
         postButton.setEnabled(false);
+      }
+    }
+  }
+
+  private void postImage() {
+    if (selectedImage != null) {
+      int response = JOptionPane.showConfirmDialog(this, "Are you sure you want to submit this?", "Confirm", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
+      if (response == JOptionPane.YES_OPTION) {
+        RedditClient client = DailyImagePoster.getInstance().getRedditClient();
+        if (client != null) {
+          Map<String, Object> args = Map.of(
+              "number", numberField.getText(),
+              "title", titleField.getText(),
+              "artist", artistField.getText(),
+              "source", sourceField.getText(),
+              "comment", commentField.getText(),
+              "postNsfw", postNsfwBox.isSelected(),
+              "sourceNsfw", sourceNsfwBox.isSelected()
+          );
+          DailyImagePoster app = DailyImagePoster.getInstance();
+          String subreddit = app.preferences.getString(DailyImagePoster.PREF_SUBREDDIT_NAME);
+          ST titleTemplate = new ST(app.preferences.getString(DailyImagePoster.PREF_TITLE_FORMAT));
+          args.forEach(titleTemplate::add);
+          String title = titleTemplate.render();
+          ST commentTemplate = new ST(app.preferences.getString(DailyImagePoster.PREF_COMMENT_FORMAT));
+          args.forEach(commentTemplate::add);
+          String comment = commentTemplate.render();
+          client.uploadAndSubmitImage(selectedImageFile, null, new SubmitOptions()
+              .setSubreddit(subreddit)
+              .setNsfw(postNsfwBox.isSelected())
+              //.setFlairId()
+              .setTitle(title), true).whenComplete((submissionUrl, ex) -> {
+            if (ex == null) {
+              DailyImagePoster.LOG.info("Link submission successful: {}", submissionUrl);
+              String linkId = StringHelper.getRedditLinkId(submissionUrl);
+              client.submitComment("t3_" + linkId, comment).whenComplete((s, ex2) -> {
+                if (ex2 == null) {
+                  DailyImagePoster.LOG.info("Comment submission successful: {}", s);
+                } else {
+                  DailyImagePoster.LOG.warn("Comment post unsuccessful", ex2);
+                }
+              });
+            } else {
+              DailyImagePoster.LOG.warn("Upload unsuccessful", ex);
+            }
+          });
+        }
       }
     }
   }

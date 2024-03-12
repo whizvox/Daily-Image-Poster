@@ -6,6 +6,7 @@ import javax.imageio.ImageWriteParam;
 import javax.imageio.ImageWriter;
 import javax.imageio.plugins.jpeg.JPEGImageWriteParam;
 import javax.imageio.stream.FileImageOutputStream;
+import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.InputStream;
@@ -44,27 +45,44 @@ public class IOHelper {
     return sha1(path, 4096); // 4 KB
   }
 
+  private static BufferedImage prepareImage(BufferedImage image, int width, int height) {
+    boolean resize = width != image.getWidth() || height != image.getHeight();
+    // image won't save as JPEG if color space has alpha component
+    if (!image.getColorModel().hasAlpha() && !resize) {
+      return image;
+    }
+    BufferedImage target = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+    Graphics2D g = target.createGraphics();
+    g.setColor(Color.BLACK);
+    g.fillRect(0, 0, width, height);
+    if (resize) {
+      g.drawImage(image, 0, 0, width, height, null);
+    } else {
+      g.drawImage(image, 0, 0, null);
+    }
+    g.dispose();
+    return target;
+  }
+
   /**
    * Save an image as a JPEG while allowing control of the compression quality.
-   * @param source Source image path
+   * @param image Source image
    * @param dest Destination image path
    * @param quality A value between 0 and 1
    * @throws IOException If image reading or writing failed
    */
-  public static void saveAsJpeg(Path source, Path dest, float quality) throws IOException {
+  public static void saveAsJpeg(BufferedImage image, Path dest, int width, int height, float quality) throws IOException {
     if (quality < 0.01F || quality > 1.0F) {
       throw new IllegalArgumentException("Quality must be between 0 and 1: " + quality);
     }
-    BufferedImage image = ImageIO.read(source.toFile());
-    String[] fileNameParts = StringHelper.getFileNameBaseAndExtension(source.getFileName().toString());
     JPEGImageWriteParam param = new JPEGImageWriteParam(Locale.getDefault());
-    param.setCompressionQuality(quality);
     param.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
+    param.setCompressionQuality(quality);
     ImageWriter writer = ImageIO.getImageWritersBySuffix("jpg").next();
     try (FileImageOutputStream out = new FileImageOutputStream(dest.toFile())) {
       writer.setOutput(out);
-      IIOImage image2 = new IIOImage(image, null, null);
-      writer.write(null, image2, param);
+      IIOImage iioImg = new IIOImage(prepareImage(image, width, height), null, null);
+      writer.write(null, iioImg, param);
     }
     writer.dispose();
   }
