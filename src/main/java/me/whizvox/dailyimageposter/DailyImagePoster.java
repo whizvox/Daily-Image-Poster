@@ -4,7 +4,6 @@ import me.whizvox.dailyimageposter.db.BackupManager;
 import me.whizvox.dailyimageposter.db.ImageManager;
 import me.whizvox.dailyimageposter.db.PostRepository;
 import me.whizvox.dailyimageposter.gui.post.PostFrame;
-import me.whizvox.dailyimageposter.legacy.ImportLegacyDatabase;
 import me.whizvox.dailyimageposter.reddit.RedditClient;
 import me.whizvox.dailyimageposter.reddit.RedditClientProperties;
 import me.whizvox.dailyimageposter.util.Preferences;
@@ -47,7 +46,8 @@ public class DailyImagePoster {
       PREF_FLAIR_TEXT = "reddit.flairText",
       PREF_IMAGE_QUALITY = "general.imageCompressionQuality",
       PREF_MIN_IMAGE_DIMENSION = "general.imageMinDimension",
-      PREF_MAX_IMAGE_SIZE = "general.imageMaxSize";
+      PREF_MAX_IMAGE_SIZE = "general.imageMaxSize",
+      PREF_LAST_SELECTED_HISTORY = "legacy.lastSelectedDb";
 
   private static final Map<String, Object> DEFAULT_PREFERENCES = Map.of(
       PREF_USER_AGENT, "desktop:me.whizvox.dailyimageposter:v0.1 (by /u/whizvox)",
@@ -220,30 +220,13 @@ public class DailyImagePoster {
   }
 
   public static void main(String[] args) {
-    // import my not-public database schema. this, along with the legacy package will be deleted at some point
     DIPArguments arguments = new DIPArguments();
     for (String arg : args) {
-      if (arg.startsWith("--legacydir=")) {
-        arguments.legacyDir = arg.substring(12);
-      }
-      if (arg.equals("--legacyaddall")) {
-        arguments.importAllLegacy = true;
-      }
       if (arg.equals("--noreddit")) {
         arguments.noReddit = true;
       }
       if (arg.equals("--autorevokereddit")) {
         arguments.autoRevokeRedditToken = true;
-      }
-    }
-    if (arguments.legacyDir != null) {
-      Path legacyDir = Paths.get(arguments.legacyDir);
-      if (Files.exists(legacyDir) && Files.isDirectory(legacyDir)) {
-        LOG.info("Importing legacy database...");
-        ImportLegacyDatabase run = new ImportLegacyDatabase();
-        run.importLegacy(legacyDir, !arguments.importAllLegacy);
-      } else {
-        LOG.warn("Provided legacy directory is not valid: {}", arguments.legacyDir);
       }
     }
 

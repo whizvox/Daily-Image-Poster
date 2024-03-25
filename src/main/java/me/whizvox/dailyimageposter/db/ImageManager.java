@@ -5,6 +5,7 @@ import org.jetbrains.annotations.Nullable;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.function.Consumer;
 
 public class ImageManager {
 
@@ -36,6 +37,14 @@ public class ImageManager {
       dstFile = root.resolve(prefix + post.fileName());
     }
     Files.copy(origImageFile, dstFile);
+  }
+
+  public void forEach(Consumer<Path> consumer) {
+    try (var walk = Files.walk(root, 1)) {
+      walk.forEach(consumer);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
   }
 
 }
