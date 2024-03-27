@@ -1,7 +1,8 @@
 # Daily Image Poster
 
-A tool to help me post daily images to Reddit. Uses Java Swing as the frontend and Java's HttpClient to submit
-requests and receive responses from Reddit using their API.
+A tool to facilitate posting daily images to Reddit. Uses Java Swing as the frontend, Java's HttpClient to submit
+requests and receive responses from Reddit using their API, and JImageHash to check if similar images have been posted
+before.
 
 Still work-in-progress.
 
@@ -12,6 +13,7 @@ Still work-in-progress.
 * [SQLite](https://www.sqlite.org/index.html): database
 * [Jackson](https://github.com/FasterXML/jackson): JSON serialization
 * [slf4j-simple](https://www.slf4j.org/api/org/slf4j/simple/SimpleLogger.html): logging
+* [JImageHash](https://github.com/KilianB/JImageHash): image fingerprinting
 
 ## How to Run
 

@@ -39,4 +39,7 @@ bin/
 .DS_Store
 
 ### Daily Image Poster-specific stuff ###
-run
+# Working directory for run task
+/run
+# Working directory for test task
+/test

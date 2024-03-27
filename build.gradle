@@ -1,6 +1,7 @@
 plugins {
   id 'java'
   id 'application'
+  id 'org.openjfx.javafxplugin' version '0.0.13'
 }
 
 group = 'me.whizvox'
@@ -8,6 +9,13 @@ version = '1.0-SNAPSHOT'
 
 repositories {
   mavenCentral()
+}
+
+// have to add some stuff from JavaFX because parts of JImageHash rely on it:
+// https://github.com/KilianB/JImageHash/issues/66
+javafx {
+  version = '17'
+  modules = ['javafx.controls']
 }
 
 dependencies {
@@ -19,6 +27,7 @@ dependencies {
   implementation 'com.github.lgooddatepicker:LGoodDatePicker:11.2.1'
   implementation 'com.github.mizosoft.methanol:methanol:1.7.0'
   implementation 'org.antlr:ST4:4.3.4'
+  implementation 'dev.brachtendorf:JImageHash:1.0.0'
   compileOnly 'org.jetbrains:annotations:24.1.0'
 
   testImplementation platform('org.junit:junit-bom:5.9.1')
@@ -33,4 +42,9 @@ run {
   mkdir "$projectDir/run"
   workingDir "$projectDir/run"
   mainClassName "me.whizvox.dailyimageposter.DailyImagePoster"
+}
+
+test {
+  mkdir "$projectDir/test"
+  workingDir "$projectDir/test"
 }

@@ -187,7 +187,7 @@ public class SearchPostsPanel extends JPanel {
       if (uploaded > 0) {
         query.put("uploaded", uploaded == 1 ? "imgur" : "reddit");
       }
-      List<Post> posts = DailyImagePoster.getInstance().getPosts().search(query).stream()
+      List<Post> posts = DailyImagePoster.getInstance().posts().search(query).stream()
           .sorted(Comparator.comparingInt(Post::number).thenComparingInt(Post::subNumber))
           .limit(100)
           .toList();

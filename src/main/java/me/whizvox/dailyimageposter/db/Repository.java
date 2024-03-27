@@ -6,6 +6,7 @@ import java.sql.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 public abstract class Repository<T> {
 
@@ -26,6 +27,8 @@ public abstract class Repository<T> {
         stmt.setTimestamp(index, Timestamp.valueOf(ldt));
       } else if (arg instanceof NullValue n) {
         stmt.setNull(index, n.sqlType());
+      } else if (arg instanceof byte[] b) {
+        stmt.setBytes(index, b);
       } else {
         stmt.setString(index, String.valueOf(arg));
       }
@@ -74,6 +77,23 @@ public abstract class Repository<T> {
 
   protected void execute(String sql) {
     execute(sql, null);
+  }
+
+  protected void forEach(String sql, List<Object> args, Consumer<T> consumer) {
+    try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+      prepareStatement(stmt, args);
+      ResultSet rs = stmt.executeQuery();
+      while (rs.next()) {
+        T row = fromRow0(rs);
+        consumer.accept(row);
+      }
+    } catch (SQLException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  protected void forEach(String sql, Consumer<T> consumer) {
+    forEach(sql, List.of(), consumer);
   }
 
   protected abstract T fromRow0(ResultSet rs) throws SQLException;

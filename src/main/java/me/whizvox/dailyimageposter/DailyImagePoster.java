@@ -1,6 +1,9 @@
 package me.whizvox.dailyimageposter;
 
+import dev.brachtendorf.jimagehash.hashAlgorithms.*;
+import dev.brachtendorf.jimagehash.hashAlgorithms.experimental.HogHash;
 import me.whizvox.dailyimageposter.db.BackupManager;
+import me.whizvox.dailyimageposter.db.ImageHashRepository;
 import me.whizvox.dailyimageposter.db.ImageManager;
 import me.whizvox.dailyimageposter.db.PostRepository;
 import me.whizvox.dailyimageposter.gui.post.PostFrame;
@@ -47,6 +50,9 @@ public class DailyImagePoster {
       PREF_IMAGE_QUALITY = "general.imageCompressionQuality",
       PREF_MIN_IMAGE_DIMENSION = "general.imageMinDimension",
       PREF_MAX_IMAGE_SIZE = "general.imageMaxSize",
+      PREF_LAST_IMAGE_DIRECTORY = "general.lastImageDirectory",
+      PREF_IMGHASH_ALGORITHM = "imghash.algorithm",
+      PREF_IMGHASH_BIT_RESOLUTION = "imghash.bitResolution",
       PREF_LAST_SELECTED_HISTORY = "legacy.lastSelectedDb";
 
   private static final Map<String, Object> DEFAULT_PREFERENCES = Map.of(
@@ -55,7 +61,9 @@ public class DailyImagePoster {
       PREF_COMMENT_FORMAT, "Artist: <artist>\nSource: <source><if(sourceNsfw)> **(NSFW Warning!)**<endif>\n<if(comment)>\n---\n<comment><endif>",
       PREF_IMAGE_QUALITY, 90,
       PREF_MIN_IMAGE_DIMENSION, 750,
-      PREF_MAX_IMAGE_SIZE, 1_100_000
+      PREF_MAX_IMAGE_SIZE, 1_100_000,
+      PREF_IMGHASH_ALGORITHM, "perceptive",
+      PREF_IMGHASH_BIT_RESOLUTION, 32
   );
 
   private final DIPArguments arguments;
@@ -68,6 +76,7 @@ public class DailyImagePoster {
   private PostRepository posts;
   private ImageManager imageManager;
   private BackupManager backupManager;
+  private ImageHashRepository hashRepo;
 
   public DailyImagePoster(DIPArguments arguments) {
     this.arguments = arguments;
@@ -81,8 +90,9 @@ public class DailyImagePoster {
     } catch (IOException e) {
       throw new RuntimeException("Could not create temp directory", e);
     }
-    imageManager = new ImageManager(Paths.get("images"));
+    imageManager = null;
     backupManager = new BackupManager(Paths.get("backups"));
+    hashRepo = null;
   }
 
   private void initDatabase(String dbName) throws SQLException {
@@ -97,6 +107,25 @@ public class DailyImagePoster {
     conn = DriverManager.getConnection("jdbc:sqlite:" + dbName);
     posts = new PostRepository(conn);
     posts.create();
+    hashRepo = new ImageHashRepository(conn);
+    hashRepo.create();
+    int res = preferences.getInt(PREF_IMGHASH_BIT_RESOLUTION);
+    String algorithm = preferences.getString(PREF_IMGHASH_ALGORITHM);
+    HashingAlgorithm hasher = switch (algorithm) {
+      case "perceptive" -> new PerceptiveHash(res);
+      case "average" -> new AverageHash(res);
+      case "averageColor" -> new AverageColorHash(res);
+      case "difference" -> new DifferenceHash(res, DifferenceHash.Precision.Simple);
+      case "wavelet" -> new WaveletHash(res, 3);
+      case "median" -> new MedianHash(res);
+      case "averageKernel" -> new AverageKernelHash(res);
+      case "rotAverage" -> new RotAverageHash(res);
+      case "rotP" -> new RotPHash(res);
+      case "hog" -> //noinspection deprecation
+          new HogHash(res);
+      default -> throw new RuntimeException("Unknown hashing algorithm: " + algorithm);
+    };
+    imageManager = new ImageManager(Paths.get("images"), hasher, hashRepo);
   }
 
   @Nullable
@@ -159,12 +188,16 @@ public class DailyImagePoster {
     return tempDir.resolve(fileName);
   }
 
-  public PostRepository getPosts() {
+  public PostRepository posts() {
     return posts;
   }
 
   public ImageManager images() {
     return imageManager;
+  }
+
+  public ImageHashRepository hashes() {
+    return hashRepo;
   }
 
   private void close() {

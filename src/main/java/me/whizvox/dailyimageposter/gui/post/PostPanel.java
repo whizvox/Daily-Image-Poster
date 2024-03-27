@@ -37,6 +37,7 @@ public class PostPanel extends JPanel {
 
   public static final int IMAGE_SIZE = 128;
 
+  private final DailyImagePoster app;
   private final PostFrame parent;
   private final JLabel idLabel;
   private final JTextField numberField;
@@ -55,6 +56,7 @@ public class PostPanel extends JPanel {
   private final JButton selectImageButton;
   private final JButton shrinkImageButton;
   private final JButton upscaleImageButton;
+  private final JButton findSimilarButton;
   private final JLabel noCredentialsLabel;
   private final JButton postButton;
 
@@ -67,6 +69,7 @@ public class PostPanel extends JPanel {
   private Timer checkRedditClientStatusTimer;
 
   public PostPanel(PostFrame parent) {
+    app = DailyImagePoster.getInstance();
     this.parent = parent;
     id = UUID.randomUUID();
     idLabel = new JLabel("ID: " + id);
@@ -98,6 +101,7 @@ public class PostPanel extends JPanel {
     selectImageButton = new JButton("Select image...");
     shrinkImageButton = new JButton("Shrink");
     upscaleImageButton = new JButton("Upscale");
+    findSimilarButton = new JButton("Find similar");
     noCredentialsLabel = new JLabel();
     postButton = new JButton("Post");
     selectedImage = null;
@@ -146,6 +150,7 @@ public class PostPanel extends JPanel {
                     .addComponent(shrinkImageButton)
                     .addComponent(upscaleImageButton)
                 )
+                .addComponent(findSimilarButton, GroupLayout.Alignment.CENTER)
             )
         )
         .addComponent(noCredentialsLabel, GroupLayout.Alignment.CENTER)
@@ -193,6 +198,8 @@ public class PostPanel extends JPanel {
                     .addComponent(shrinkImageButton)
                     .addComponent(upscaleImageButton)
                 )
+                .addGap(GAP_SIZE)
+                .addComponent(findSimilarButton)
             )
         )
         .addGap(GAP_SIZE)
@@ -216,7 +223,7 @@ public class PostPanel extends JPanel {
     });
     selectImageButton.addActionListener(event -> selectImage());
     shrinkImageButton.addActionListener(event -> {
-      if (imageSize > 0 && imageSize < DailyImagePoster.getInstance().preferences.getInt(DailyImagePoster.PREF_MAX_IMAGE_SIZE)) {
+      if (imageSize > 0 && imageSize < app.preferences.getInt(DailyImagePoster.PREF_MAX_IMAGE_SIZE)) {
         int ret = JOptionPane.showConfirmDialog(this, "Are you sure you wish to shrink this image? It's already within an expected size.", "Confirm", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
         if (ret != JOptionPane.YES_OPTION) {
           return;
@@ -224,6 +231,7 @@ public class PostPanel extends JPanel {
         shrinkImage();
       }
     });
+    findSimilarButton.addActionListener(event -> findSimilarImages());
     postButton.addActionListener(event -> postImage());
     checkRedditClientStatusTimer = new Timer(1000, e -> checkRedditClientStatus());
     checkRedditClientStatusTimer.start();
@@ -271,7 +279,7 @@ public class PostPanel extends JPanel {
   private void selectImage() {
     Path dir;
     if (selectedImageFile == null) {
-      dir = Paths.get(".");
+      dir = Paths.get(Objects.requireNonNullElse(app.preferences.getString(DailyImagePoster.PREF_LAST_IMAGE_DIRECTORY), "."));
     } else {
       dir = selectedImageFile.getParent();
     }
@@ -286,7 +294,7 @@ public class PostPanel extends JPanel {
 
   private void checkTitle() {
     String title = titleField.getText();
-    List<Post> posts = DailyImagePoster.getInstance().getPosts().searchTitle(title);
+    List<Post> posts = app.posts().searchTitle(title);
     if (posts.isEmpty()) {
       JOptionPane.showMessageDialog(this, "No posts found", "No posts found", JOptionPane.INFORMATION_MESSAGE);
     } else {
@@ -299,6 +307,7 @@ public class PostPanel extends JPanel {
   private void updateImage(Path imagePath) {
     selectedImageFile = imagePath;
     lastSelectedDir = selectedImageFile.getParent();
+    app.preferences.setString(DailyImagePoster.PREF_LAST_IMAGE_DIRECTORY, lastSelectedDir.toAbsolutePath().normalize().toString());
     BufferedImage image;
     try (InputStream in = Files.newInputStream(selectedImageFile)) {
       image = ImageIO.read(in);
@@ -326,17 +335,17 @@ public class PostPanel extends JPanel {
       return;
     }
     String[] parts = StringHelper.getFileNameBaseAndExtension(selectedImageFile.getFileName().toString());
-    Path newPath = DailyImagePoster.getInstance().getTempPath(parts[0] + "_compressed" + parts[1]);
+    Path newPath = app.getTempPath(parts[0] + "_compressed" + parts[1]);
     int copyNumber = 0;
     while (Files.exists(newPath)) {
       copyNumber++;
-      newPath = DailyImagePoster.getInstance().getTempPath(parts[0] + "_compressed (" + copyNumber + ")" + parts[1]);
+      newPath = app.getTempPath(parts[0] + "_compressed (" + copyNumber + ")" + parts[1]);
     }
     long origSize = imageSize;
     int origWidth = selectedImage.getWidth();
     Path origLastSelectedDir = lastSelectedDir;
-    int maxSize = DailyImagePoster.getInstance().preferences.getInt(DailyImagePoster.PREF_MAX_IMAGE_SIZE);
-    float quality = DailyImagePoster.getInstance().preferences.getInt(DailyImagePoster.PREF_IMAGE_QUALITY) / 100.0F;
+    int maxSize = app.preferences.getInt(DailyImagePoster.PREF_MAX_IMAGE_SIZE);
+    float quality = app.preferences.getInt(DailyImagePoster.PREF_IMAGE_QUALITY) / 100.0F;
     long currentImageSize;
     float currentWidth = imageWidth;
     float currentHeight = imageHeight;
@@ -366,8 +375,26 @@ public class PostPanel extends JPanel {
     );
   }
 
+  private void findSimilarImages() {
+    if (selectedImageFile == null) {
+      return;
+    }
+    findSimilarButton.setText("Working...");
+    findSimilarButton.setEnabled(false);
+    SwingUtilities.invokeLater(() -> {
+      app.images().updateImageHashes(false);
+      List<String> similarImages = app.images().findSimilarImages(selectedImageFile, 0.2);
+      findSimilarButton.setText("Find similar");
+      findSimilarButton.setEnabled(true);
+      if (similarImages.isEmpty()) {
+        JOptionPane.showMessageDialog(this, "No duplicate images found!");
+      } else {
+        JOptionPane.showMessageDialog(this, "This image has been found " + similarImages.size() + " times");
+      }
+    });
+  }
+
   private void checkRedditClientStatus() {
-    DailyImagePoster app = DailyImagePoster.getInstance();
     RedditClient client = app.getRedditClient();
     if (client == null) {
       noCredentialsLabel.setText("Reddit Credentials are not set! Go to File > Preferences to set them.");
@@ -389,7 +416,7 @@ public class PostPanel extends JPanel {
     if (selectedImage != null) {
       int response = JOptionPane.showConfirmDialog(this, "Are you sure you want to submit this?", "Confirm", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
       if (response == JOptionPane.YES_OPTION) {
-        RedditClient client = DailyImagePoster.getInstance().getRedditClient();
+        RedditClient client = app.getRedditClient();
         if (client != null) {
           Map<String, Object> args = Map.of(
               "number", numberField.getText(),
@@ -400,7 +427,6 @@ public class PostPanel extends JPanel {
               "postNsfw", postNsfwBox.isSelected(),
               "sourceNsfw", sourceNsfwBox.isSelected()
           );
-          DailyImagePoster app = DailyImagePoster.getInstance();
           String subreddit = app.preferences.getString(DailyImagePoster.PREF_SUBREDDIT_NAME);
           ST titleTemplate = new ST(app.preferences.getString(DailyImagePoster.PREF_TITLE_FORMAT));
           args.forEach(titleTemplate::add);

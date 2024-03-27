@@ -99,7 +99,7 @@ public class ImportLegacyPanel extends JPanel {
         List<LegacyEntry> entries = JsonHelper.OBJECT_MAPPER.readValue(historyFile.toFile(), new TypeReference<>() {});
         if (!ignoreExistingEntries) {
           DailyImagePoster.LOG.warn("Deleting all posts and images...");
-          app.getPosts().deleteAll();
+          app.posts().deleteAll();
           app.images().forEach(path -> {
             try {
               Files.delete(path);
@@ -113,14 +113,14 @@ public class ImportLegacyPanel extends JPanel {
           Path imageFile = historyFile.getParent().resolve(entry.fileName);
           String fileName = imageFile.getFileName().toString();
           if (ignoreExistingEntries) {
-            Post existingPost = DailyImagePoster.getInstance().getPosts().getByFileName(fileName);
+            Post existingPost = DailyImagePoster.getInstance().posts().getByFileName(fileName);
             if (existingPost != null) {
               DailyImagePoster.LOG.trace("Skipping already existing entry {}", fileName);
               return;
             }
           }
           Post post = new Post(UUID.randomUUID(), fileName, entry.id, (byte) 0, entry.title, entry.artist, entry.source, null, false, false, entry.redditPostId, null, entry.imgurId, null);
-          app.getPosts().add(post);
+          app.posts().add(post);
           DailyImagePoster.LOG.debug("Added post to database: {} ({})", post.formatNumber(), StringHelper.withCutoff(post.fileName(), 40));
           try {
             count.addAndGet(1);
