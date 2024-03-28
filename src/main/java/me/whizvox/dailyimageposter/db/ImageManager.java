@@ -15,7 +15,7 @@ import java.util.function.Consumer;
 public class ImageManager {
 
   private final Path root;
-  private final HashingAlgorithm hasher;
+  private HashingAlgorithm hasher;
   private final ImageHashRepository hashRepo;
 
   public ImageManager(Path root, HashingAlgorithm hasher, ImageHashRepository hashRepo) {
@@ -27,6 +27,10 @@ public class ImageManager {
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
+  }
+
+  public void setHashingAlgorithm(HashingAlgorithm hasher) {
+    this.hasher = hasher;
   }
 
   public Path getImagePath(String fileName) {

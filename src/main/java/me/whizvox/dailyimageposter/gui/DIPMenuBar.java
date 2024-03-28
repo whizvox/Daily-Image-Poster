@@ -26,7 +26,7 @@ public class DIPMenuBar extends JMenuBar {
     fileMenu.addSeparator();
     fileMenu.add(fileExit);
 
-    JMenu postsMenu = new JMenu("Post");
+    JMenu postsMenu = new JMenu("Posts");
     postsMenu.setMnemonic('P');
     add(postsMenu);
     JMenuItem postsCreate = new JMenuItem("Create new post");

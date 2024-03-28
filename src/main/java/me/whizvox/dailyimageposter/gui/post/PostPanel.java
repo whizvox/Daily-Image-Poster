@@ -102,7 +102,7 @@ public class PostPanel extends JPanel {
     shrinkImageButton = new JButton("Shrink");
     upscaleImageButton = new JButton("Upscale");
     findSimilarButton = new JButton("Find similar");
-    noCredentialsLabel = new JLabel();
+    noCredentialsLabel = new JLabel(" ");
     postButton = new JButton("Post");
     selectedImage = null;
     selectedImageFile = null;
@@ -402,7 +402,7 @@ public class PostPanel extends JPanel {
       postButton.setEnabled(false);
     } else {
       if (client.hasAccessToken()) {
-        noCredentialsLabel.setText("");
+        noCredentialsLabel.setText(" ");
         postButton.setEnabled(true);
       } else {
         noCredentialsLabel.setText("Fetching access token...");

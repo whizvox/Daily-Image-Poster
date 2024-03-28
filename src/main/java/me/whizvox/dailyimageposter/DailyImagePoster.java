@@ -95,6 +95,25 @@ public class DailyImagePoster {
     hashRepo = null;
   }
 
+  private HashingAlgorithm getHashingAlgorithm() {
+    int res = preferences.getInt(PREF_IMGHASH_BIT_RESOLUTION);
+    String algorithm = preferences.getString(PREF_IMGHASH_ALGORITHM);
+    return switch (algorithm) {
+      case "perceptive" -> new PerceptiveHash(res);
+      case "average" -> new AverageHash(res);
+      case "averageColor" -> new AverageColorHash(res);
+      case "difference" -> new DifferenceHash(res, DifferenceHash.Precision.Simple);
+      case "wavelet" -> new WaveletHash(res, 3);
+      case "median" -> new MedianHash(res);
+      case "averageKernel" -> new AverageKernelHash(res);
+      case "rotAverage" -> new RotAverageHash(res);
+      case "rotP" -> new RotPHash(res);
+      case "hog" -> //noinspection deprecation
+          new HogHash(res);
+      default -> throw new RuntimeException("Unknown hashing algorithm: " + algorithm);
+    };
+  }
+
   private void initDatabase(String dbName) throws SQLException {
     Path dbPath = Paths.get(dbName);
     if (Files.exists(dbPath)) {
@@ -109,23 +128,7 @@ public class DailyImagePoster {
     posts.create();
     hashRepo = new ImageHashRepository(conn);
     hashRepo.create();
-    int res = preferences.getInt(PREF_IMGHASH_BIT_RESOLUTION);
-    String algorithm = preferences.getString(PREF_IMGHASH_ALGORITHM);
-    HashingAlgorithm hasher = switch (algorithm) {
-      case "perceptive" -> new PerceptiveHash(res);
-      case "average" -> new AverageHash(res);
-      case "averageColor" -> new AverageColorHash(res);
-      case "difference" -> new DifferenceHash(res, DifferenceHash.Precision.Simple);
-      case "wavelet" -> new WaveletHash(res, 3);
-      case "median" -> new MedianHash(res);
-      case "averageKernel" -> new AverageKernelHash(res);
-      case "rotAverage" -> new RotAverageHash(res);
-      case "rotP" -> new RotPHash(res);
-      case "hog" -> //noinspection deprecation
-          new HogHash(res);
-      default -> throw new RuntimeException("Unknown hashing algorithm: " + algorithm);
-    };
-    imageManager = new ImageManager(Paths.get("images"), hasher, hashRepo);
+    imageManager = new ImageManager(Paths.get("images"), getHashingAlgorithm(), hashRepo);
   }
 
   @Nullable
@@ -133,7 +136,10 @@ public class DailyImagePoster {
     return client;
   }
 
-  public void updateRedditClient() {
+  public void onPreferencesUpdated() {
+    if (imageManager != null) {
+      imageManager.setHashingAlgorithm(getHashingAlgorithm());
+    }
     if (arguments.noReddit) {
       LOG.debug("Reddit client disabled, so it will not be updated");
       return;
@@ -265,7 +271,7 @@ public class DailyImagePoster {
 
     instance = new DailyImagePoster(arguments);
     instance.preferences.load();
-    instance.updateRedditClient();
+    instance.onPreferencesUpdated();
     try {
       instance.initDatabase("dip.db");
     } catch (SQLException e) {
