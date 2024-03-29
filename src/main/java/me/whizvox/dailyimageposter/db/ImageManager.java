@@ -8,6 +8,7 @@ import org.jetbrains.annotations.Nullable;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
@@ -27,6 +28,10 @@ public class ImageManager {
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
+  }
+
+  public Path getRoot() {
+    return root;
   }
 
   public void setHashingAlgorithm(HashingAlgorithm hasher) {
@@ -53,7 +58,7 @@ public class ImageManager {
     } else {
       dstFile = root.resolve(prefix + post.fileName());
     }
-    Files.copy(origImageFile, dstFile);
+    Files.copy(origImageFile, dstFile, StandardCopyOption.REPLACE_EXISTING);
   }
 
   public void forEach(Consumer<Path> consumer) {
@@ -98,16 +103,19 @@ public class ImageManager {
     });
   }
 
-  public List<String> findSimilarImages(Path imagePath, double threshold) {
-    List<String> similarImages = new ArrayList<>();
+  public List<SimilarImage> findSimilarImages(Path imagePath, double threshold) {
+    List<SimilarImage> similarImages = new ArrayList<>();
     Hash origHash = hashImage(imagePath);
     hashRepo.forEach(entry -> {
       double similarity = origHash.normalizedHammingDistance(entry.hash());
       if (similarity <= threshold) {
-        similarImages.add(entry.fileName());
+        similarImages.add(new SimilarImage(entry.fileName(), similarity));
       }
     });
     return similarImages;
+  }
+
+  public record SimilarImage(String fileName, double similarity) {
   }
 
 }

@@ -87,6 +87,10 @@ public class Preferences {
     return get(key, Integer::parseInt);
   }
 
+  public double getDouble(String key) {
+    return get(key, Double::parseDouble);
+  }
+
   public LocalDateTime getDateTime(String key) {
     return get(key, s -> LocalDateTime.from(DateTimeFormatter.ISO_DATE_TIME.parse(s)));
   }
@@ -112,6 +116,10 @@ public class Preferences {
     set(key, value, i -> Integer.toString(i));
   }
 
+  public void setDouble(String key, double value) {
+    set(key, value, d -> Double.toString(d));
+  }
+
   public void setDateTime(String key, LocalDateTime value) {
     set(key, value, DateTimeFormatter.ISO_DATE_TIME::format);
   }
@@ -127,6 +135,10 @@ public class Preferences {
       setInt(key, s);
     } else if (value instanceof Byte b) {
       setInt(key, b);
+    } else if (value instanceof Double d) {
+      setDouble(key, d);
+    } else if (value instanceof Float f) {
+      setDouble(key, f);
     } else if (value instanceof LocalDateTime ldt) {
       setDateTime(key, ldt);
     } else {

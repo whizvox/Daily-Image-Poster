@@ -70,7 +70,7 @@ public class ImageHashRepository extends Repository<ImageHash> {
   }
 
   public boolean exists(String fileName) {
-    return get(fileName) != null;
+    return exists(SQL_SELECT_BY_FILE, List.of(fileName));
   }
 
   public void add(String fileName, Hash hash) {

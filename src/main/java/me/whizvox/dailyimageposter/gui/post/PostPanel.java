@@ -1,6 +1,7 @@
 package me.whizvox.dailyimageposter.gui.post;
 
 import me.whizvox.dailyimageposter.DailyImagePoster;
+import me.whizvox.dailyimageposter.db.ImageManager;
 import me.whizvox.dailyimageposter.db.Post;
 import me.whizvox.dailyimageposter.gui.ListPostsPanel;
 import me.whizvox.dailyimageposter.reddit.RedditClient;
@@ -30,6 +31,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static me.whizvox.dailyimageposter.util.UIHelper.GAP_SIZE;
 
@@ -382,14 +384,17 @@ public class PostPanel extends JPanel {
     findSimilarButton.setText("Working...");
     findSimilarButton.setEnabled(false);
     SwingUtilities.invokeLater(() -> {
-      app.images().updateImageHashes(false);
-      List<String> similarImages = app.images().findSimilarImages(selectedImageFile, 0.2);
+      List<ImageManager.SimilarImage> similarImages = app.images().findSimilarImages(
+          selectedImageFile, app.preferences.getDouble(DailyImagePoster.PREF_SIMILARITY_THRESHOLD));
+      similarImages.sort(Comparator.comparingDouble(ImageManager.SimilarImage::similarity));
       findSimilarButton.setText("Find similar");
       findSimilarButton.setEnabled(true);
       if (similarImages.isEmpty()) {
-        JOptionPane.showMessageDialog(this, "No duplicate images found!");
+        JOptionPane.showMessageDialog(this, "No similar images found!");
       } else {
-        JOptionPane.showMessageDialog(this, "This image has been found " + similarImages.size() + " times");
+        JOptionPane.showMessageDialog(this, "This image has been found " + similarImages.size() + " time(s):\n" +
+            similarImages.stream()
+                .map(i -> "[%.3f] %s".formatted(i.similarity(), i.fileName())).collect(Collectors.joining("\n")));
       }
     });
   }

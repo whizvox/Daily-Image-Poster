@@ -2,6 +2,7 @@ package me.whizvox.dailyimageposter.gui;
 
 import me.whizvox.dailyimageposter.DailyImagePoster;
 import me.whizvox.dailyimageposter.gui.debug.RedditDebugFrame;
+import me.whizvox.dailyimageposter.gui.imghash.ImageHashFrame;
 import me.whizvox.dailyimageposter.gui.legacy.ImportLegacyFrame;
 import me.whizvox.dailyimageposter.gui.post.PostFrame;
 import me.whizvox.dailyimageposter.gui.prefs.PreferencesDialog;
@@ -12,7 +13,6 @@ import javax.swing.*;
 public class DIPMenuBar extends JMenuBar {
 
   public DIPMenuBar(JFrame parent) {
-
     DailyImagePoster app = DailyImagePoster.getInstance();
     JMenu fileMenu = new JMenu("File");
     fileMenu.setMnemonic('F');
@@ -47,10 +47,17 @@ public class DIPMenuBar extends JMenuBar {
     } else {
       postsLegacy.addActionListener(event -> app.changeFrame(ImportLegacyFrame::new, "Import legacy database"));
     }
+    JMenuItem postsHashes = new JMenuItem("Image hashes");
+    if (parent instanceof ImageHashFrame) {
+      postsHashes.setEnabled(false);
+    } else {
+      postsHashes.addActionListener(e -> app.changeFrame(ImageHashFrame::new, "Image hashes"));
+    }
     JMenuItem postsRebuild = new JMenuItem("Rebuild database");
     postsMenu.add(postsCreate);
     postsMenu.add(postsSearch);
     postsMenu.add(postsLegacy);
+    postsMenu.add(postsHashes);
     postsMenu.add(postsRebuild);
 
     JMenu backupsMenu = new JMenu("Backups");
@@ -70,7 +77,6 @@ public class DIPMenuBar extends JMenuBar {
       debugReddit.addActionListener(event -> app.changeFrame(RedditDebugFrame::new, "Reddit Client Debugging"));
     }
     debugMenu.add(debugReddit);
-
   }
 
 }

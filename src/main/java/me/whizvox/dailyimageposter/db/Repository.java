@@ -96,6 +96,20 @@ public abstract class Repository<T> {
     forEach(sql, List.of(), consumer);
   }
 
+  protected boolean exists(String sql, List<Object> args) {
+    try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+      prepareStatement(stmt, args);
+      ResultSet rs = stmt.executeQuery();
+      return rs.next();
+    } catch (SQLException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  protected boolean exists(String sql) {
+    return exists(sql, List.of());
+  }
+
   protected abstract T fromRow0(ResultSet rs) throws SQLException;
 
   @Nullable

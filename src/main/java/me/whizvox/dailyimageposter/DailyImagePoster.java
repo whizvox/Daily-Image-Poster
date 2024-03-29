@@ -53,6 +53,7 @@ public class DailyImagePoster {
       PREF_LAST_IMAGE_DIRECTORY = "general.lastImageDirectory",
       PREF_IMGHASH_ALGORITHM = "imghash.algorithm",
       PREF_IMGHASH_BIT_RESOLUTION = "imghash.bitResolution",
+      PREF_SIMILARITY_THRESHOLD = "imghash.similarityThreshold",
       PREF_LAST_SELECTED_HISTORY = "legacy.lastSelectedDb";
 
   private static final Map<String, Object> DEFAULT_PREFERENCES = Map.of(
@@ -63,7 +64,8 @@ public class DailyImagePoster {
       PREF_MIN_IMAGE_DIMENSION, 750,
       PREF_MAX_IMAGE_SIZE, 1_100_000,
       PREF_IMGHASH_ALGORITHM, "perceptive",
-      PREF_IMGHASH_BIT_RESOLUTION, 32
+      PREF_IMGHASH_BIT_RESOLUTION, 32,
+      PREF_SIMILARITY_THRESHOLD, 0.2
   );
 
   private final DIPArguments arguments;

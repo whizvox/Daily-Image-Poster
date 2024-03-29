@@ -45,6 +45,7 @@ public class GeneralPrefsPanel extends AbstractPrefsPanel {
   private final JTextField imageMaxSizeField;
   private final JComboBox<String> hashAlgorithmCombo;
   private final JTextField bitResField;
+  private final JTextField thresholdField;
 
   public GeneralPrefsPanel(PreferencesPanel parent) {
     super(parent);
@@ -67,7 +68,13 @@ public class GeneralPrefsPanel extends AbstractPrefsPanel {
     hashAlgorithmCombo = new JComboBox<>(HASH_ALGORITHM_DISPLAYS);
     hashAlgorithmCombo.setSelectedIndex(getHashAlgorithmIndex(app.preferences.getString(DailyImagePoster.PREF_IMGHASH_ALGORITHM)));
     JLabel bitResLabel = new JLabel("Image Hash Bit Resolution");
+    JLabel bitResInfo = new JLabel("(Integer)");
+    bitResInfo.setFont(plainFont);
     bitResField = new JTextField(Integer.toString(app.preferences.getInt(DailyImagePoster.PREF_IMGHASH_BIT_RESOLUTION)));
+    JLabel thresholdLabel = new JLabel("Image Similarity Threshold");
+    JLabel thresholdInfo = new JLabel("(Decimal between 0.0 and 1.0)");
+    thresholdInfo.setFont(plainFont);
+    thresholdField = new JTextField(Double.toString(app.preferences.getDouble(DailyImagePoster.PREF_SIMILARITY_THRESHOLD)));
 
     int fh = imageQualityField.getPreferredSize().height;
 
@@ -94,6 +101,11 @@ public class GeneralPrefsPanel extends AbstractPrefsPanel {
         .addComponent(hashAlgorithmCombo)
         .addComponent(bitResLabel)
         .addComponent(bitResField)
+        .addGroup(layout.createSequentialGroup()
+            .addComponent(thresholdLabel)
+            .addComponent(thresholdInfo)
+        )
+        .addComponent(thresholdField)
     );
     layout.setVerticalGroup(layout.createSequentialGroup()
         .addGroup(layout.createParallelGroup()
@@ -119,10 +131,16 @@ public class GeneralPrefsPanel extends AbstractPrefsPanel {
         .addGap(GAP_SIZE)
         .addComponent(bitResLabel)
         .addComponent(bitResField, fh, fh, fh)
+        .addGap(GAP_SIZE)
+        .addGroup(layout.createParallelGroup()
+            .addComponent(thresholdLabel)
+            .addComponent(thresholdInfo)
+        )
+        .addComponent(thresholdField, fh, fh, fh)
     );
     setLayout(layout);
 
-    parent.addChangeListeners(imageQualityField, imageMinDimensionField, imageMaxSizeField, bitResField);
+    parent.addChangeListeners(imageQualityField, imageMinDimensionField, imageMaxSizeField, bitResField, thresholdField);
     hashAlgorithmCombo.addActionListener(event -> parent.markUnsavedChanges());
   }
 
@@ -168,7 +186,17 @@ public class GeneralPrefsPanel extends AbstractPrefsPanel {
       }
       prefs.put(DailyImagePoster.PREF_IMGHASH_BIT_RESOLUTION, bitRes);
     } catch (NumberFormatException e) {
-      DailyImagePoster.LOG.warn("Invalid input for image hash bit resolution: " + bitResStr);
+      DailyImagePoster.LOG.warn("Invalid input for image hash bit resolution: {}", bitResStr);
+    }
+    String thresholdStr = thresholdField.getText();
+    try {
+      double threshold = Double.parseDouble(thresholdStr);
+      if (threshold < 0.0 || threshold > 1.0) {
+        throw new NumberFormatException();
+      }
+      prefs.put(DailyImagePoster.PREF_SIMILARITY_THRESHOLD, threshold);
+    } catch (NumberFormatException e) {
+      DailyImagePoster.LOG.warn("Invalid input for image similarity threshold: {}", thresholdStr);
     }
   }
 
