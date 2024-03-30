@@ -6,10 +6,9 @@ import javax.swing.*;
 import java.awt.*;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
-import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.stream.Stream;
 
 import static me.whizvox.dailyimageposter.util.UIHelper.GAP_SIZE;
 
@@ -55,12 +54,7 @@ public class ImageHashProgressPanel extends JPanel implements PropertyChangeList
     );
     setLayout(layout);
 
-    List<Path> paths;
-    try (var stream = Files.list(app.images().getRoot())) {
-      paths = stream.filter(path -> !path.equals(app.images().getRoot())).toList();
-    } catch (IOException e) {
-      throw new RuntimeException("Could not list files in directory", e);
-    }
+    List<Path> paths = app.images().applyStream(Stream::toList);
     task = new Task(paths, forceUpdate);
     task.addPropertyChangeListener(this);
 
@@ -113,17 +107,8 @@ public class ImageHashProgressPanel extends JPanel implements PropertyChangeList
         if (shouldCancel) {
           break;
         }
-        if (forceUpdate) {
-          DailyImagePoster.LOG.debug("Force updating image hash {}", imagePath);
-          app.hashes().addOrUpdate(imagePath.getFileName().toString(), app.images().hashImage(imagePath));
+        if (app.images().addImageHash(imagePath.getFileName().toString(), forceUpdate)) {
           hashedImages++;
-        } else {
-          String fileName = imagePath.getFileName().toString();
-          if (!app.hashes().exists(fileName)) {
-            DailyImagePoster.LOG.debug("Adding image hash {}", imagePath);
-            app.hashes().add(fileName, app.images().hashImage(imagePath));
-            hashedImages++;
-          }
         }
         count++;
         int progress = (int) (((float) count / images.size()) * 100);

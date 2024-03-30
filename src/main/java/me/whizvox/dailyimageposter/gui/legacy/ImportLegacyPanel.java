@@ -100,13 +100,13 @@ public class ImportLegacyPanel extends JPanel {
         if (!ignoreExistingEntries) {
           DailyImagePoster.LOG.warn("Deleting all posts and images...");
           app.posts().deleteAll();
-          app.images().forEach(path -> {
+          app.images().consumeStream(stream -> stream.forEach(path -> {
             try {
               Files.delete(path);
             } catch (IOException e) {
               DailyImagePoster.LOG.warn("Could not delete image " + path, e);
             }
-          });
+          }));
         }
         AtomicInteger count = new AtomicInteger(0);
         entries.forEach(entry -> {

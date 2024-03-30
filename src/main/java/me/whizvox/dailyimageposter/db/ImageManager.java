@@ -2,7 +2,6 @@ package me.whizvox.dailyimageposter.db;
 
 import dev.brachtendorf.jimagehash.hash.Hash;
 import dev.brachtendorf.jimagehash.hashAlgorithms.HashingAlgorithm;
-import me.whizvox.dailyimageposter.DailyImagePoster;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
@@ -12,6 +11,8 @@ import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.stream.Stream;
 
 public class ImageManager {
 
@@ -28,10 +29,6 @@ public class ImageManager {
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
-  }
-
-  public Path getRoot() {
-    return root;
   }
 
   public void setHashingAlgorithm(HashingAlgorithm hasher) {
@@ -61,16 +58,19 @@ public class ImageManager {
     Files.copy(origImageFile, dstFile, StandardCopyOption.REPLACE_EXISTING);
   }
 
-  public void forEach(Consumer<Path> consumer) {
-    try (var walk = Files.walk(root, 1)) {
-      walk.forEach(path -> {
-        if (!path.equals(root)) {
-          consumer.accept(path);
-        }
-      });
+  public <T> T applyStream(Function<Stream<Path>, T> func) {
+    try (var stream = Files.list(root).filter(path -> !path.equals(root))) {
+      return func.apply(stream);
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
+  }
+
+  public void consumeStream(Consumer<Stream<Path>> consumer) {
+    applyStream(stream -> {
+      consumer.accept(stream);
+      return null;
+    });
   }
 
   public Hash hashImage(Path path) {
@@ -85,22 +85,23 @@ public class ImageManager {
     return hashImage(getImagePath(fileName));
   }
 
-  public void hashAndAddImage(String fileName) {
-    Hash hash = hashImage(fileName);
-    hashRepo.addOrUpdate(fileName, hash);
+  private boolean addImageHash(Path path, boolean forceUpdate) {
+    String fileName = path.getFileName().toString();
+    boolean exists = hashRepo.exists(fileName);
+    if (exists) {
+      if (forceUpdate) {
+        hashRepo.update(fileName, hashImage(path));
+        return true;
+      }
+    } else {
+      hashRepo.add(fileName, hashImage(path));
+      return true;
+    }
+    return false;
   }
 
-  public void updateImageHashes(boolean force) {
-    forEach(path -> {
-      String fileName = path.getFileName().toString();
-      if (force) {
-        DailyImagePoster.LOG.debug("Updating image hash by force: " + path);
-        hashRepo.addOrUpdate(fileName, hashImage(path));
-      } else if (!hashRepo.exists(fileName)) {
-        DailyImagePoster.LOG.debug("Updating image hash: " + path);
-        hashRepo.add(fileName, hashImage(path));
-      }
-    });
+  public boolean addImageHash(String fileName, boolean forceUpdate) {
+    return addImageHash(getImagePath(fileName), forceUpdate);
   }
 
   public List<SimilarImage> findSimilarImages(Path imagePath, double threshold) {

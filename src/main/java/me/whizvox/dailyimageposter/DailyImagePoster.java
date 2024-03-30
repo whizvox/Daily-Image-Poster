@@ -139,9 +139,7 @@ public class DailyImagePoster {
   }
 
   public void onPreferencesUpdated() {
-    if (imageManager != null) {
-      imageManager.setHashingAlgorithm(getHashingAlgorithm());
-    }
+    imageManager.setHashingAlgorithm(getHashingAlgorithm());
     if (arguments.noReddit) {
       LOG.debug("Reddit client disabled, so it will not be updated");
       return;
@@ -273,12 +271,12 @@ public class DailyImagePoster {
 
     instance = new DailyImagePoster(arguments);
     instance.preferences.load();
-    instance.onPreferencesUpdated();
     try {
       instance.initDatabase("dip.db");
     } catch (SQLException e) {
       throw new RuntimeException("Could not initialize database", e);
     }
+    instance.onPreferencesUpdated();
     instance.changeFrame(PostFrame::new, null);
 
   }

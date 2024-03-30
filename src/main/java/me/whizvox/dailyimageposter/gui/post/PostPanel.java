@@ -4,6 +4,7 @@ import me.whizvox.dailyimageposter.DailyImagePoster;
 import me.whizvox.dailyimageposter.db.ImageManager;
 import me.whizvox.dailyimageposter.db.Post;
 import me.whizvox.dailyimageposter.gui.ListPostsPanel;
+import me.whizvox.dailyimageposter.gui.imghash.ImageHashProgressDialog;
 import me.whizvox.dailyimageposter.reddit.RedditClient;
 import me.whizvox.dailyimageposter.reddit.SubmitOptions;
 import me.whizvox.dailyimageposter.util.IOHelper;
@@ -69,6 +70,7 @@ public class PostPanel extends JPanel {
   private int imageWidth, imageHeight;
   private long imageSize;
   private Timer checkRedditClientStatusTimer;
+  private boolean hashesOutOfDate;
 
   public PostPanel(PostFrame parent) {
     app = DailyImagePoster.getInstance();
@@ -237,6 +239,7 @@ public class PostPanel extends JPanel {
     postButton.addActionListener(event -> postImage());
     checkRedditClientStatusTimer = new Timer(1000, e -> checkRedditClientStatus());
     checkRedditClientStatusTimer.start();
+    updateImageHashesStatus();
 
     setDropTarget(new DropTarget());
     try {
@@ -263,6 +266,12 @@ public class PostPanel extends JPanel {
     } catch (TooManyListenersException e) {
       throw new RuntimeException(e);
     }
+  }
+
+  public void updateImageHashesStatus() {
+    hashesOutOfDate = app.images().applyStream(stream ->
+        stream.anyMatch(path -> !app.hashes().exists(path.getFileName().toString()))
+    );
   }
 
   public void updatePost(Post post) {
@@ -380,6 +389,15 @@ public class PostPanel extends JPanel {
   private void findSimilarImages() {
     if (selectedImageFile == null) {
       return;
+    }
+    if (hashesOutOfDate) {
+      int choice = JOptionPane.showOptionDialog(this, "Image hashes are out-of-date. Do you want to update them?", "Warning", JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE, null, new String[] {"Cancel", "No", "Yes"}, "Cancel");
+      if (choice == 0) {
+        return;
+      } else if (choice == 2) {
+        new ImageHashProgressDialog(parent, true, false);
+        hashesOutOfDate = false;
+      }
     }
     findSimilarButton.setText("Working...");
     findSimilarButton.setEnabled(false);
