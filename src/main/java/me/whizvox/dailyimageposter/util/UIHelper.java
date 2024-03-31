@@ -5,9 +5,14 @@ import me.whizvox.dailyimageposter.gui.DIPMenuBar;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.font.TextAttribute;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.net.URI;
+import java.util.HashMap;
+import java.util.Map;
 
 public class UIHelper {
 
@@ -39,6 +44,26 @@ public class UIHelper {
   public static void addMenuBar(JFrame frame) {
     JMenuBar menuBar = new DIPMenuBar(frame);
     frame.setJMenuBar(menuBar);
+  }
+
+  public static void setPlainFont(Component comp) {
+    comp.setFont(comp.getFont().deriveFont(Font.PLAIN));
+  }
+
+  public static void addHyperlink(Component comp, String url) {
+    Map<TextAttribute, Object> attributes = new HashMap<>();
+    attributes.put(TextAttribute.FONT, comp.getFont());
+    attributes.put(TextAttribute.UNDERLINE, TextAttribute.UNDERLINE_ON);
+    Font underlinedFont = Font.getFont(attributes);
+    comp.setFont(underlinedFont);
+    comp.setForeground(Color.BLUE);
+    comp.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+    comp.addMouseListener(new MouseAdapter() {
+      @Override
+      public void mouseClicked(MouseEvent e) {
+        browse(url);
+      }
+    });
   }
 
 }

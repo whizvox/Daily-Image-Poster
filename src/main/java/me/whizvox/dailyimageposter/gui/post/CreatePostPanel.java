@@ -10,6 +10,7 @@ import me.whizvox.dailyimageposter.reddit.SubmitOptions;
 import me.whizvox.dailyimageposter.util.IOHelper;
 import me.whizvox.dailyimageposter.util.StringHelper;
 import me.whizvox.dailyimageposter.util.UIHelper;
+import me.whizvox.dailyimageposter.waifu2x.Upscaler;
 import org.stringtemplate.v4.ST;
 
 import javax.imageio.ImageIO;
@@ -36,12 +37,12 @@ import java.util.stream.Collectors;
 
 import static me.whizvox.dailyimageposter.util.UIHelper.GAP_SIZE;
 
-public class PostPanel extends JPanel {
+public class CreatePostPanel extends JPanel {
 
   public static final int IMAGE_SIZE = 128;
 
   private final DailyImagePoster app;
-  private final PostFrame parent;
+  private final CreatePostFrame parent;
   private final JLabel idLabel;
   private final JTextField numberField;
   private final JButton latestNumberButton;
@@ -72,7 +73,7 @@ public class PostPanel extends JPanel {
   private Timer checkRedditClientStatusTimer;
   private boolean hashesOutOfDate;
 
-  public PostPanel(PostFrame parent) {
+  public CreatePostPanel(CreatePostFrame parent) {
     app = DailyImagePoster.getInstance();
     this.parent = parent;
     id = UUID.randomUUID();
@@ -212,6 +213,7 @@ public class PostPanel extends JPanel {
     );
     setLayout(layout);
 
+    latestNumberButton.addActionListener(e -> findLatestPostNumber());
     checkTitleButton.addActionListener(event -> checkTitle());
     imagePreviewLabel.addMouseListener(new MouseAdapter() {
       @Override
@@ -232,9 +234,10 @@ public class PostPanel extends JPanel {
         if (ret != JOptionPane.YES_OPTION) {
           return;
         }
-        shrinkImage();
       }
+      shrinkImage();
     });
+    upscaleImageButton.addActionListener(e -> upscaleImage());
     findSimilarButton.addActionListener(event -> findSimilarImages());
     postButton.addActionListener(event -> postImage());
     checkRedditClientStatusTimer = new Timer(1000, e -> checkRedditClientStatus());
@@ -255,7 +258,7 @@ public class PostPanel extends JPanel {
           try {
             List<File> droppedFiles = (List<File>) event.getTransferable().getTransferData(DataFlavor.javaFileListFlavor);
             if (!droppedFiles.isEmpty()) {
-              updateImage(droppedFiles.get(0).toPath());
+              updateImage(droppedFiles.get(0).toPath(), true);
             }
           } catch (UnsupportedFlavorException | IOException e) {
             DailyImagePoster.LOG.warn("Could not perform drag-and-drop operation", e);
@@ -287,19 +290,28 @@ public class PostPanel extends JPanel {
     postButton.setEnabled(enablePostButton);
   }
 
+  private void findLatestPostNumber() {
+    Post last = app.posts().getLast();
+    if (last == null) {
+      numberField.setText("1");
+    } else {
+      numberField.setText(Integer.toString(last.number() + 1));
+    }
+  }
+
   private void selectImage() {
     Path dir;
-    if (selectedImageFile == null) {
+    if (lastSelectedDir == null) {
       dir = Paths.get(Objects.requireNonNullElse(app.preferences.getString(DailyImagePoster.PREF_LAST_IMAGE_DIRECTORY), "."));
     } else {
-      dir = selectedImageFile.getParent();
+      dir = lastSelectedDir;
     }
     JFileChooser chooser = new JFileChooser(dir.toFile());
     FileNameExtensionFilter filter = new FileNameExtensionFilter("Images (*.png, *.jpeg, *.jpg)", "png", "jpeg", "jpg");
     chooser.setFileFilter(filter);
     int ret = chooser.showOpenDialog(this);
     if (ret == JFileChooser.APPROVE_OPTION) {
-      updateImage(chooser.getSelectedFile().toPath());
+      updateImage(chooser.getSelectedFile().toPath(), true);
     }
   }
 
@@ -315,10 +327,12 @@ public class PostPanel extends JPanel {
     }
   }
 
-  private void updateImage(Path imagePath) {
+  private void updateImage(Path imagePath, boolean updatePreference) {
     selectedImageFile = imagePath;
-    lastSelectedDir = selectedImageFile.getParent();
-    app.preferences.setString(DailyImagePoster.PREF_LAST_IMAGE_DIRECTORY, lastSelectedDir.toAbsolutePath().normalize().toString());
+    if (updatePreference) {
+      lastSelectedDir = selectedImageFile.getParent();
+      app.preferences.setString(DailyImagePoster.PREF_LAST_IMAGE_DIRECTORY, lastSelectedDir.toAbsolutePath().normalize().toString());
+    }
     BufferedImage image;
     try (InputStream in = Files.newInputStream(selectedImageFile)) {
       image = ImageIO.read(in);
@@ -346,15 +360,9 @@ public class PostPanel extends JPanel {
       return;
     }
     String[] parts = StringHelper.getFileNameBaseAndExtension(selectedImageFile.getFileName().toString());
-    Path newPath = app.getTempPath(parts[0] + "_compressed" + parts[1]);
-    int copyNumber = 0;
-    while (Files.exists(newPath)) {
-      copyNumber++;
-      newPath = app.getTempPath(parts[0] + "_compressed (" + copyNumber + ")" + parts[1]);
-    }
+    Path newPath = app.getTempPath(parts[0] + "_cmp" + parts[1]);
     long origSize = imageSize;
     int origWidth = selectedImage.getWidth();
-    Path origLastSelectedDir = lastSelectedDir;
     int maxSize = app.preferences.getInt(DailyImagePoster.PREF_MAX_IMAGE_SIZE);
     float quality = app.preferences.getInt(DailyImagePoster.PREF_IMAGE_QUALITY) / 100.0F;
     long currentImageSize;
@@ -376,14 +384,42 @@ public class PostPanel extends JPanel {
         DailyImagePoster.LOG.warn("Could not shrink image", e);
       }
     }
-    updateImage(newPath);
-    lastSelectedDir = origLastSelectedDir;
+    updateImage(newPath, false);
     double sizeDiff = (imageSize - origSize) / (double) origSize;
     double dimensionDiff = (imageWidth - origWidth) / (double) origWidth;
     JOptionPane.showMessageDialog(this, "Image shrunk to %s (%d%%) and %dx%d (%d%%)".formatted(
         StringHelper.formatBytesLength(imageSize), (int) (sizeDiff * 100), imageWidth, imageHeight,
         (int) (dimensionDiff * 100))
     );
+  }
+
+  private void upscaleImage() {
+    if (selectedImageFile == null) {
+      return;
+    }
+    String waifu2xLocation = app.preferences.getString(DailyImagePoster.PREF_WAIFU2X_LOCATION);
+    if (StringHelper.isNullOrBlank(waifu2xLocation)) {
+      JOptionPane.showMessageDialog(this, "waifu2x location is not set. Go to Preferences > Images to set it.");
+      return;
+    }
+    upscaleImageButton.setText("Working...");
+    upscaleImageButton.setEnabled(false);
+    Upscaler upscaler = new Upscaler(
+        Paths.get(waifu2xLocation),
+        app.preferences.getString(DailyImagePoster.PREF_WAIFU2X_ARGS)
+    );
+    String[] parts = StringHelper.getFileNameBaseAndExtension(selectedImageFile.getFileName().toString());
+    Path outputPath = app.getTempPath(parts[0] + "_ups" + parts[1]);
+    upscaler.run(selectedImageFile, outputPath, success -> {
+      if (success) {
+        updateImage(outputPath, false);
+        JOptionPane.showMessageDialog(this, "Image successfully upscaled", "Success", JOptionPane.INFORMATION_MESSAGE);
+      } else {
+        JOptionPane.showMessageDialog(this, "Could not upscale image. Check the logs for more information", "Error", JOptionPane.ERROR_MESSAGE);
+      }
+      upscaleImageButton.setText("Upscale");
+      upscaleImageButton.setEnabled(true);
+    });
   }
 
   private void findSimilarImages() {

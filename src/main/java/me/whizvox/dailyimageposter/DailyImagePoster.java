@@ -6,7 +6,7 @@ import me.whizvox.dailyimageposter.db.BackupManager;
 import me.whizvox.dailyimageposter.db.ImageHashRepository;
 import me.whizvox.dailyimageposter.db.ImageManager;
 import me.whizvox.dailyimageposter.db.PostRepository;
-import me.whizvox.dailyimageposter.gui.post.PostFrame;
+import me.whizvox.dailyimageposter.gui.post.CreatePostFrame;
 import me.whizvox.dailyimageposter.reddit.RedditClient;
 import me.whizvox.dailyimageposter.reddit.RedditClientProperties;
 import me.whizvox.dailyimageposter.util.Preferences;
@@ -47,13 +47,15 @@ public class DailyImagePoster {
       PREF_COMMENT_FORMAT = "reddit.commentFormat",
       PREF_FLAIR_ID = "reddit.flairId",
       PREF_FLAIR_TEXT = "reddit.flairText",
-      PREF_IMAGE_QUALITY = "general.imageCompressionQuality",
-      PREF_MIN_IMAGE_DIMENSION = "general.imageMinDimension",
-      PREF_MAX_IMAGE_SIZE = "general.imageMaxSize",
-      PREF_LAST_IMAGE_DIRECTORY = "general.lastImageDirectory",
-      PREF_IMGHASH_ALGORITHM = "imghash.algorithm",
-      PREF_IMGHASH_BIT_RESOLUTION = "imghash.bitResolution",
-      PREF_SIMILARITY_THRESHOLD = "imghash.similarityThreshold",
+      PREF_IMAGE_QUALITY = "image.compressionQuality",
+      PREF_MIN_IMAGE_DIMENSION = "image.minDimension",
+      PREF_MAX_IMAGE_SIZE = "image.maxSize",
+      PREF_LAST_IMAGE_DIRECTORY = "image.lastDirectory",
+      PREF_IMAGE_HASH_ALGORITHM = "image.hashAlgorithm",
+      PREF_IMAGE_HASH_BIT_RES = "image.hashBitResolution",
+      PREF_SIMILARITY_THRESHOLD = "image.similarityThreshold",
+      PREF_WAIFU2X_LOCATION = "image.waifu2xLocation",
+      PREF_WAIFU2X_ARGS = "image.waifu2xArgs",
       PREF_LAST_SELECTED_HISTORY = "legacy.lastSelectedDb";
 
   private static final Map<String, Object> DEFAULT_PREFERENCES = Map.of(
@@ -63,9 +65,10 @@ public class DailyImagePoster {
       PREF_IMAGE_QUALITY, 90,
       PREF_MIN_IMAGE_DIMENSION, 750,
       PREF_MAX_IMAGE_SIZE, 1_100_000,
-      PREF_IMGHASH_ALGORITHM, "perceptive",
-      PREF_IMGHASH_BIT_RESOLUTION, 32,
-      PREF_SIMILARITY_THRESHOLD, 0.2
+      PREF_IMAGE_HASH_ALGORITHM, "perceptive",
+      PREF_IMAGE_HASH_BIT_RES, 32,
+      PREF_SIMILARITY_THRESHOLD, 0.2,
+      PREF_WAIFU2X_ARGS, "-c 9 -q 90"
   );
 
   private final DIPArguments arguments;
@@ -98,8 +101,8 @@ public class DailyImagePoster {
   }
 
   private HashingAlgorithm getHashingAlgorithm() {
-    int res = preferences.getInt(PREF_IMGHASH_BIT_RESOLUTION);
-    String algorithm = preferences.getString(PREF_IMGHASH_ALGORITHM);
+    int res = preferences.getInt(PREF_IMAGE_HASH_BIT_RES);
+    String algorithm = preferences.getString(PREF_IMAGE_HASH_ALGORITHM);
     return switch (algorithm) {
       case "perceptive" -> new PerceptiveHash(res);
       case "average" -> new AverageHash(res);
@@ -277,7 +280,7 @@ public class DailyImagePoster {
       throw new RuntimeException("Could not initialize database", e);
     }
     instance.onPreferencesUpdated();
-    instance.changeFrame(PostFrame::new, null);
+    instance.changeFrame(CreatePostFrame::new, null);
 
   }
 

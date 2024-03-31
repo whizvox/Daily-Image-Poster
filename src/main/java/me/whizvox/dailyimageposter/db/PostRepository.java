@@ -35,7 +35,7 @@ public class PostRepository extends Repository<Post> {
       SQL_SELECT_ONE = SQL_SELECT_ALL + " WHERE id=?",
       SQL_SELECT_BY_FILE = SQL_SELECT_ALL + " WHERE file_name=?",
       SQL_SELECT_BY_TITLE = SQL_SELECT_ALL + " WHERE UPPER(title) LIKE '%' || ? || '%'",
-      SQL_SEARCH_LAST = SQL_SELECT_ONE + " WHERE num IS NOT NULL AND sub_num IS NOT NULL ORDER BY num,sub_num LIMIT 1",
+      SQL_SEARCH_LAST = SQL_SELECT_ALL + " WHERE num IS NOT NULL AND sub_num IS NOT NULL ORDER BY sub_num,num DESC LIMIT 1",
       SQL_SELECT_ALL_POSTED = SQL_SELECT_ALL + " WHERE when_posted IS NOT NULL",
       SQL_DELETE_ALL = "DELETE FROM posts",
       SQL_DELETE_ONE = SQL_DELETE_ALL + " WHERE id=?",

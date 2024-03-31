@@ -4,7 +4,7 @@ import me.whizvox.dailyimageposter.DailyImagePoster;
 import me.whizvox.dailyimageposter.gui.debug.RedditDebugFrame;
 import me.whizvox.dailyimageposter.gui.imghash.ImageHashFrame;
 import me.whizvox.dailyimageposter.gui.legacy.ImportLegacyFrame;
-import me.whizvox.dailyimageposter.gui.post.PostFrame;
+import me.whizvox.dailyimageposter.gui.post.CreatePostFrame;
 import me.whizvox.dailyimageposter.gui.prefs.PreferencesDialog;
 import me.whizvox.dailyimageposter.gui.search.SearchPostsFrame;
 
@@ -30,10 +30,10 @@ public class DIPMenuBar extends JMenuBar {
     postsMenu.setMnemonic('P');
     add(postsMenu);
     JMenuItem postsCreate = new JMenuItem("Create new post");
-    if (parent instanceof PostFrame) {
+    if (parent instanceof CreatePostFrame) {
       postsCreate.setEnabled(false);
     } else {
-      postsCreate.addActionListener(event -> app.changeFrame(PostFrame::new, null));
+      postsCreate.addActionListener(event -> app.changeFrame(CreatePostFrame::new, null));
     }
     JMenuItem postsSearch = new JMenuItem("Search posts");
     if (parent instanceof SearchPostsFrame) {

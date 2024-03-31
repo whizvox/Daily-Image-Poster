@@ -20,7 +20,7 @@ public class PreferencesPanel extends JPanel {
   private boolean unsavedChanges;
 
   public PreferencesPanel(PreferencesDialog parent) {
-    JList<String> list = new JList<>(new String[] {"General", "Backups", "Reddit Credentials"});
+    JList<String> list = new JList<>(new String[] {"General", "Backups", "Reddit", "Images"});
     list.getSelectionModel().setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
     list.setSelectedIndex(0);
     currentPrefsPanel = new GeneralPrefsPanel(this);
@@ -64,6 +64,7 @@ public class PreferencesPanel extends JPanel {
         case 0 -> changePrefsPanel(new GeneralPrefsPanel(this));
         case 1 -> changePrefsPanel(new BackupsPrefsPanel(this));
         case 2 -> changePrefsPanel(new RedditPrefsPanel(this));
+        case 3 -> changePrefsPanel(new ImagesPrefsPanel(this));
         default -> DailyImagePoster.LOG.warn("Invalid preferences selection: {}", index);
       }
     });

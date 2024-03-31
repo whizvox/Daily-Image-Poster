@@ -50,19 +50,7 @@ public class ViewPostPanel extends JPanel {
     JLabel sourceLabel = new JLabel("Source");
     JLabel sourceValue = createValueLabel(post.source(), false);
     if (post.source() != null) {
-      Map<TextAttribute, Object> attributes = new HashMap<>();
-      attributes.put(TextAttribute.FONT, sourceValue.getFont());
-      attributes.put(TextAttribute.UNDERLINE, TextAttribute.UNDERLINE_ON);
-      Font underlinedFont = Font.getFont(attributes);
-      sourceValue.setFont(underlinedFont);
-      sourceValue.setForeground(Color.BLUE);
-      sourceValue.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-      sourceValue.addMouseListener(new MouseAdapter() {
-        @Override
-        public void mouseClicked(MouseEvent e) {
-          UIHelper.browse(post.source());
-        }
-      });
+      UIHelper.addHyperlink(sourceValue, post.source());
     }
     JLabel commentLabel = new JLabel("Comment");
     JTextArea commentValue = new JTextArea(Objects.requireNonNullElse(post.comment(), ""));
