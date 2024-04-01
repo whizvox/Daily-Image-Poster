@@ -85,7 +85,7 @@ public class StringHelper {
    */
   public static String[] getRedditLinkParts(String submissionUrl) {
     Matcher matcher = PATTERN_SUBMISSION_URL.matcher(submissionUrl);
-    if (matcher.groupCount() > 2) {
+    if (matcher.find()) {
       return new String[] { matcher.group(1), matcher.group(2), matcher.group(3) };
     }
     return new String[0];

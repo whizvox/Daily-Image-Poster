@@ -61,7 +61,7 @@ public class DailyImagePoster {
   private static final Map<String, Object> DEFAULT_PREFERENCES = Map.of(
       PREF_USER_AGENT, "desktop:me.whizvox.dailyimageposter:v0.1 (by /u/whizvox)",
       PREF_TITLE_FORMAT, "<title> | Daily Image #<number>",
-      PREF_COMMENT_FORMAT, "Artist: <artist>\nSource: <source><if(sourceNsfw)> **(NSFW Warning!)**<endif>\n<if(comment)>\n---\n<comment><endif>",
+      PREF_COMMENT_FORMAT, "* Artist: <artist>\n* Source: <source><if(sourceNsfw)> **(NSFW Warning!)**<endif><if(comment)>\n\n---\n\n<comment><endif>",
       PREF_IMAGE_QUALITY, 90,
       PREF_MIN_IMAGE_DIMENSION, 750,
       PREF_MAX_IMAGE_SIZE, 1_100_000,

@@ -1,6 +1,7 @@
 package me.whizvox.dailyimageposter.reddit;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.github.mizosoft.methanol.Methanol;
 import com.github.mizosoft.methanol.MultipartBodyPublisher;
@@ -24,10 +25,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.Base64;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicReference;
@@ -37,7 +35,8 @@ public class RedditClient {
 
   private static final String
       WWW_BASE = "https://www.reddit.com/api/",
-      OAUTH_BASE = "https://oauth.reddit.com/api/",
+      OAUTH_BASE = "https://oauth.reddit.com/",
+      OAUTH_API = OAUTH_BASE + "api/",
       TYPE_URLENCODED = "application/x-www-form-urlencoded",
       TYPE_MULTIPART = "multipart/form-data",
       GET = "GET",
@@ -47,11 +46,12 @@ public class RedditClient {
   private static final String
       EP_ACCESS_TOKEN = WWW_BASE + "v1/access_token",
       EP_REVOKE_TOKEN = WWW_BASE + "v1/revoke_token",
-      EP_ME = OAUTH_BASE + "v1/me",
-      EP_MEDIA_ASSET = OAUTH_BASE + "media/asset.json",
-      EP_SUBMIT = OAUTH_BASE + "submit",
-      EP_INFO = OAUTH_BASE + "info",
-      EP_COMMENT = OAUTH_BASE + "comment";
+      EP_ME = OAUTH_API + "v1/me",
+      EP_MEDIA_ASSET = OAUTH_API + "media/asset.json",
+      EP_SUBMIT = OAUTH_API + "submit",
+      EP_INFO = OAUTH_API + "info",
+      EP_COMMENT = OAUTH_API + "comment",
+      EP_LINK_FLAIRS = OAUTH_BASE + "r/%s/api/link_flair_v2";
 
   private final RedditClientProperties props;
   private final Methanol client;
@@ -177,8 +177,11 @@ public class RedditClient {
     } else {
       first = CompletableFuture.completedFuture(null);
     }
-    return first.thenCompose(nil -> client.sendAsync(req, HttpResponse.BodyHandlers.ofString())
-        .thenApply(res -> handleResponse(res, func, 3, 0))
+    return first.thenCompose(nil -> {
+      DailyImagePoster.LOG.debug("Sending {} request to {}...", req.method(), req.uri());
+          return client.sendAsync(req, HttpResponse.BodyHandlers.ofString())
+              .thenApply(res -> handleResponse(res, func, 3, 0));
+        }
     );
   }
 
@@ -243,7 +246,7 @@ public class RedditClient {
       if (extIndex == -1) {
         throw new IllegalArgumentException("Image file name does not have an extension");
       }
-      type = IMAGE_TYPES.get(fileName.substring(extIndex + 1));
+      type = IMAGE_TYPES.get(fileName.substring(extIndex + 1).toLowerCase());
       if (type == null) {
         throw new IllegalArgumentException("No type specified and unknown file extension: " + fileName);
       }
@@ -361,6 +364,17 @@ public class RedditClient {
   public CompletableFuture<SubredditListing> getSubreddit(String name) {
     HttpRequest req = builder(EP_INFO, GET, Map.of("sr_name", name), null, bearerAuth()).build();
     return send(req, SubredditListing.class);
+  }
+
+  public CompletableFuture<List<LinkFlair>> getLinkFlairs(String subreddit) {
+    HttpRequest req = builder(EP_LINK_FLAIRS.formatted(subreddit), GET, Map.of(), null, bearerAuth()).build();
+    return send(req, s -> {
+      try {
+        return JsonHelper.OBJECT_MAPPER.readValue(s, new TypeReference<>() {});
+      } catch (JsonProcessingException e) {
+        throw new RuntimeException("Could not read link flairs", e);
+      }
+    });
   }
 
 }

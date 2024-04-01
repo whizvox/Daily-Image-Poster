@@ -5,8 +5,6 @@ import me.whizvox.dailyimageposter.util.StringHelper;
 import me.whizvox.dailyimageposter.util.UIHelper;
 
 import javax.swing.*;
-import javax.swing.filechooser.FileFilter;
-import java.awt.*;
 import java.io.File;
 import java.util.Map;
 

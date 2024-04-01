@@ -3,6 +3,8 @@ package me.whizvox.dailyimageposter.gui.prefs;
 import me.whizvox.dailyimageposter.DailyImagePoster;
 import me.whizvox.dailyimageposter.reddit.RedditClient;
 import me.whizvox.dailyimageposter.reddit.RedditClientProperties;
+import me.whizvox.dailyimageposter.reddit.pojo.LinkFlair;
+import me.whizvox.dailyimageposter.util.StringHelper;
 
 import javax.swing.*;
 import java.awt.*;
@@ -20,6 +22,7 @@ public class RedditPrefsPanel extends AbstractPrefsPanel {
 
   private final JTextField subredditField;
   private final JTextField flairIdField;
+  private final JButton selectFlairButton;
   private final JTextField flairTextField;
   private final JTextField titleFormatField;
   private final JTextArea commentFormatField;
@@ -46,8 +49,10 @@ public class RedditPrefsPanel extends AbstractPrefsPanel {
     subredditField = new JTextField(app.preferences.getString(DailyImagePoster.PREF_SUBREDDIT_NAME));
     JLabel flairIdLabel = new JLabel("Flair ID");
     flairIdField = new JTextField(app.preferences.getString(DailyImagePoster.PREF_FLAIR_ID));
+
     JLabel flairTextLabel = new JLabel("Flair Text");
     flairTextField = new JTextField(app.preferences.getString(DailyImagePoster.PREF_FLAIR_TEXT));
+    selectFlairButton = new JButton("Select");
     JLabel titleFormatLabel = new JLabel("Title Format");
     titleFormatField = new JTextField(app.preferences.getString(DailyImagePoster.PREF_TITLE_FORMAT));
     JLabel commentFormatLabel = new JLabel("Comment Format");
@@ -78,7 +83,10 @@ public class RedditPrefsPanel extends AbstractPrefsPanel {
         .addComponent(subredditLabel)
         .addComponent(subredditField)
         .addComponent(flairIdLabel)
-        .addComponent(flairIdField)
+        .addGroup(layout.createSequentialGroup()
+            .addComponent(flairIdField)
+            .addComponent(selectFlairButton)
+        )
         .addComponent(flairTextLabel)
         .addComponent(flairTextField)
         .addComponent(titleFormatLabel)
@@ -107,16 +115,19 @@ public class RedditPrefsPanel extends AbstractPrefsPanel {
         .addComponent(testResultLabel)
         .addComponent(separator)
         .addComponent(subredditLabel)
-        .addComponent(subredditField)
+        .addComponent(subredditField, fh, fh, fh)
         .addGap(GAP_SIZE)
         .addComponent(flairIdLabel)
-        .addComponent(flairIdField)
+        .addGroup(layout.createParallelGroup()
+            .addComponent(flairIdField, fh, fh, fh)
+            .addComponent(selectFlairButton, fh, fh, fh)
+        )
         .addGap(GAP_SIZE)
         .addComponent(flairTextLabel)
-        .addComponent(flairTextField)
+        .addComponent(flairTextField, fh, fh, fh)
         .addGap(GAP_SIZE)
         .addComponent(titleFormatLabel)
-        .addComponent(titleFormatField)
+        .addComponent(titleFormatField, fh, fh, fh)
         .addGap(GAP_SIZE)
         .addComponent(commentFormatLabel)
         .addComponent(commentFormatField)
@@ -179,6 +190,22 @@ public class RedditPrefsPanel extends AbstractPrefsPanel {
         testButton.setEnabled(true);
       });
     });
+    selectFlairButton.addActionListener(e -> selectFlair());
+  }
+
+  private void selectFlair() {
+    String subreddit = subredditField.getText();
+    if (StringHelper.isNullOrBlank(subreddit)) {
+      JOptionPane.showMessageDialog(this, "You must first specify a subreddit");
+    } else {
+      LinkFlair flair = RedditLinkFlairsDialog.selectFlair(null, subreddit);
+      if (flair != null) {
+        flairIdField.setText(flair.id);
+        if (flair.textEditable) {
+          flairTextField.setText(flair.text);
+        }
+      }
+    }
   }
 
   @Override

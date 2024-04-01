@@ -487,6 +487,10 @@ public class CreatePostPanel extends JPanel {
               "sourceNsfw", sourceNsfwBox.isSelected()
           );
           String subreddit = app.preferences.getString(DailyImagePoster.PREF_SUBREDDIT_NAME);
+          if (StringHelper.isNullOrBlank(subreddit)) {
+            JOptionPane.showMessageDialog(this, "Subreddit must be defined");
+            return;
+          }
           ST titleTemplate = new ST(app.preferences.getString(DailyImagePoster.PREF_TITLE_FORMAT));
           args.forEach(titleTemplate::add);
           String title = titleTemplate.render();
@@ -496,18 +500,24 @@ public class CreatePostPanel extends JPanel {
           client.uploadAndSubmitImage(selectedImageFile, null, new SubmitOptions()
               .setSubreddit(subreddit)
               .setNsfw(postNsfwBox.isSelected())
-              //.setFlairId()
+              .setFlairId(app.preferences.getString(DailyImagePoster.PREF_FLAIR_ID))
+              .setFlairText(app.preferences.getString(DailyImagePoster.PREF_FLAIR_TEXT))
               .setTitle(title), true).whenComplete((submissionUrl, ex) -> {
             if (ex == null) {
               DailyImagePoster.LOG.info("Link submission successful: {}", submissionUrl);
               String linkId = StringHelper.getRedditLinkId(submissionUrl);
-              client.submitComment("t3_" + linkId, comment).whenComplete((s, ex2) -> {
-                if (ex2 == null) {
-                  DailyImagePoster.LOG.info("Comment submission successful: {}", s);
-                } else {
-                  DailyImagePoster.LOG.warn("Comment post unsuccessful", ex2);
-                }
-              });
+              if (linkId != null) {
+                client.submitComment("t3_" + linkId, comment).whenComplete((s, ex2) -> {
+                  if (ex2 == null) {
+                    DailyImagePoster.LOG.info("Comment submission successful: {}", s);
+                  } else {
+                    DailyImagePoster.LOG.warn("Comment post unsuccessful", ex2);
+                  }
+                  // TODO Add post to database and copy image to images directory
+                });
+              } else {
+                DailyImagePoster.LOG.warn("Could not parse link ID from URL: {}", submissionUrl);
+              }
             } else {
               DailyImagePoster.LOG.warn("Upload unsuccessful", ex);
             }
