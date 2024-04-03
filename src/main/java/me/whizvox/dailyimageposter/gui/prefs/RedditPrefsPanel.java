@@ -14,7 +14,7 @@ import static me.whizvox.dailyimageposter.util.UIHelper.GAP_SIZE;
 
 public class RedditPrefsPanel extends AbstractPrefsPanel {
 
-  private final JTextField clientIdField;
+  private final JPasswordField clientIdField;
   private final JPasswordField clientSecretField;
   private final JTextField usernameField;
   private final JPasswordField passwordField;
@@ -32,7 +32,7 @@ public class RedditPrefsPanel extends AbstractPrefsPanel {
 
     DailyImagePoster app = DailyImagePoster.getInstance();
     JLabel clientIdLabel = new JLabel("Client ID");
-    clientIdField = new JTextField(app.preferences.getString(DailyImagePoster.PREF_CLIENT_ID));
+    clientIdField = new JPasswordField(app.preferences.getString(DailyImagePoster.PREF_CLIENT_ID));
     JLabel clientSecretLabel = new JLabel("Client Secret");
     clientSecretField = new JPasswordField(app.preferences.getString(DailyImagePoster.PREF_CLIENT_SECRET));
     JLabel usernameLabel = new JLabel("Username");
@@ -141,9 +141,11 @@ public class RedditPrefsPanel extends AbstractPrefsPanel {
 
     showSecretBox.addChangeListener(event -> {
       if (showSecretBox.isSelected()) {
+        clientIdField.setEchoChar((char) 0);
         clientSecretField.setEchoChar((char) 0);
         passwordField.setEchoChar((char) 0);
       } else {
+        clientIdField.setEchoChar(echoChar);
         clientSecretField.setEchoChar(echoChar);
         passwordField.setEchoChar(echoChar);
       }

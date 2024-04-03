@@ -168,10 +168,10 @@ public class RedditClient {
     return func.apply(response.body());
   }
 
-  private <T> CompletableFuture<T> send(HttpRequest req, Function<String, T> func) {
+  private <T> CompletableFuture<T> send(HttpRequest req, Function<String, T> func, boolean checkAccessToken) {
     // update access token if expired
     CompletableFuture<?> first;
-    if (isAccessTokenExpired()) {
+    if (checkAccessToken && isAccessTokenExpired()) {
       DailyImagePoster.LOG.info("Access token expired, queueing attempt to retrieve another one");
       first = fetchAccessToken();
     } else {
@@ -185,8 +185,16 @@ public class RedditClient {
     );
   }
 
+  private <T> CompletableFuture<T> send(HttpRequest req, Function<String, T> func) {
+    return send(req, func, true);
+  }
+
+  private <T> CompletableFuture<T> send(HttpRequest req, Class<T> cls, boolean checkAccessToken) {
+    return send(req, res -> JsonHelper.read(res, cls), checkAccessToken);
+  }
+
   private <T> CompletableFuture<T> send(HttpRequest req, Class<T> cls) {
-    return send(req, res -> JsonHelper.read(res, cls));
+    return send(req, cls, true);
   }
 
   public void setAccessToken(String accessToken, LocalDateTime expires) {
@@ -205,7 +213,7 @@ public class RedditClient {
         "password", props.password()
     );
     HttpRequest req = builder(EP_ACCESS_TOKEN, POST, args, null, basicAuth()).build();
-    return send(req, AccessToken.class)
+    return send(req, AccessToken.class, false)
         .thenApply(accessToken -> {
           this.accessToken = accessToken;
           accessTokenExpires = LocalDateTime.now().plusSeconds(accessToken.expiresIn);
@@ -213,7 +221,7 @@ public class RedditClient {
         });
   }
 
-  public CompletableFuture<?> revokeToken() {
+  public CompletableFuture<Void> revokeToken() {
     if (accessToken == null) {
       return CompletableFuture.completedFuture(null);
     }

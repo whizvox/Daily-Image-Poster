@@ -7,7 +7,6 @@ import org.jetbrains.annotations.Nullable;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
@@ -47,15 +46,22 @@ public class ImageManager {
     return getImagePath(post.fileName());
   }
 
-  public void copy(Path origImageFile, Post post) throws IOException {
-    String prefix = String.format("%04d_", post.number());
+  public String copy(Path origImageFile, int number) throws IOException {
+    String fileName = origImageFile.getFileName().toString();
+    String prefix = String.format("%04d_", number);
+    boolean addPrefix = !fileName.startsWith(prefix);
+    int copy = 0;
     Path dstFile;
-    if (origImageFile.getFileName().toString().startsWith(prefix)) {
-      dstFile = root.resolve(post.fileName());
-    } else {
-      dstFile = root.resolve(prefix + post.fileName());
-    }
-    Files.copy(origImageFile, dstFile, StandardCopyOption.REPLACE_EXISTING);
+    do {
+      dstFile = root.resolve(
+          (addPrefix ? prefix : "") +
+          fileName +
+          (copy == 0 ? "" : " (" + copy + ")")
+      );
+      copy++;
+    } while (Files.exists(dstFile));
+    Files.copy(origImageFile, dstFile);
+    return dstFile.getFileName().toString();
   }
 
   public <T> T applyStream(Function<Stream<Path>, T> func) {

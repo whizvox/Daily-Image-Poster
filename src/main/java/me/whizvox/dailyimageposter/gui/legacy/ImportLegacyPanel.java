@@ -124,7 +124,7 @@ public class ImportLegacyPanel extends JPanel {
           DailyImagePoster.LOG.debug("Added post to database: {} ({})", post.formatNumber(), StringHelper.withCutoff(post.fileName(), 40));
           try {
             count.addAndGet(1);
-            app.images().copy(imagesDir.resolve(fileName), post);
+            app.images().copy(imagesDir.resolve(fileName), post.number());
           } catch (IOException e) {
             DailyImagePoster.LOG.warn("Could not import image " + fileName, e);
           }

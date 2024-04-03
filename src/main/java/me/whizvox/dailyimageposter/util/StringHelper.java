@@ -1,10 +1,13 @@
 package me.whizvox.dailyimageposter.util;
 
+import me.whizvox.dailyimageposter.reddit.pojo.Comment;
 import org.jetbrains.annotations.Nullable;
+import org.stringtemplate.v4.ST;
 
 import java.net.http.HttpResponse;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -45,6 +48,10 @@ public class StringHelper {
 
   public static boolean isNullOrBlank(String s) {
     return s == null || s.isBlank();
+  }
+
+  public static String nullIfBlank(String s) {
+    return s == null || s.isBlank() ? null : s;
   }
 
   public static String withCutoff(String s, int maxLength) {
@@ -98,6 +105,23 @@ public class StringHelper {
       return null;
     }
     return parts[1];
+  }
+
+  @Nullable
+  public static Comment parseCommentFromJQuery(String jqueryResponse) {
+    int i0 = jqueryResponse.indexOf("[18, 19, \"call\", [[");
+    int i1 = jqueryResponse.indexOf("], false]], [0, 20, \"call\"");
+    if (i0 < 0 || i1 < 0) {
+      return null;
+    }
+    return JsonHelper.read(jqueryResponse.substring(i0 + 19, i1), Comment.class);
+  }
+
+  public static String renderFromTemplate(String template, Map<String, Object> args) {
+    ST st = new ST(template);
+    args.forEach(st::add);
+    // ST, for some dumb reason, adds carriage returns to all new lines
+    return st.render().replaceAll("\r", "");
   }
 
 }

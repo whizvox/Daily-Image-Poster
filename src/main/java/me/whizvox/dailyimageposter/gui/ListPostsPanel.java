@@ -18,7 +18,8 @@ public class ListPostsPanel extends JPanel {
       }
       sb.append("] ").append(post.title()).append('\n');
     });
-    JLabel listLabel = new JLabel(sb.toString());
+    JTextArea listLabel = new JTextArea(sb.toString());
+    listLabel.setEditable(false);
 
     GroupLayout layout = new GroupLayout(this);
     layout.setAutoCreateGaps(true);

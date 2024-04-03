@@ -101,6 +101,10 @@ public class PreferencesPanel extends JPanel {
     saveButton.setEnabled(true);
   }
 
+  public void addChangeListener(AbstractButton button) {
+    button.addActionListener(e -> markUnsavedChanges());
+  }
+
   public void addChangeListener(JTextComponent component) {
     component.getDocument().addDocumentListener((DocumentChangedListener) event -> markUnsavedChanges());
   }

@@ -7,11 +7,11 @@ import me.whizvox.dailyimageposter.gui.ListPostsPanel;
 import me.whizvox.dailyimageposter.gui.imghash.ImageHashProgressDialog;
 import me.whizvox.dailyimageposter.reddit.RedditClient;
 import me.whizvox.dailyimageposter.reddit.SubmitOptions;
+import me.whizvox.dailyimageposter.reddit.pojo.Comment;
 import me.whizvox.dailyimageposter.util.IOHelper;
 import me.whizvox.dailyimageposter.util.StringHelper;
 import me.whizvox.dailyimageposter.util.UIHelper;
 import me.whizvox.dailyimageposter.waifu2x.Upscaler;
-import org.stringtemplate.v4.ST;
 
 import javax.imageio.ImageIO;
 import javax.swing.Timer;
@@ -31,6 +31,7 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -323,6 +324,8 @@ public class CreatePostPanel extends JPanel {
     } else {
       JDialog dialog = new JDialog(parent, "Posts found");
       dialog.setContentPane(new ListPostsPanel(posts));
+      dialog.pack();
+      dialog.setLocationRelativeTo(this);
       dialog.setVisible(true);
     }
   }
@@ -472,59 +475,108 @@ public class CreatePostPanel extends JPanel {
   }
 
   private void postImage() {
-    if (selectedImage != null) {
-      int response = JOptionPane.showConfirmDialog(this, "Are you sure you want to submit this?", "Confirm", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
-      if (response == JOptionPane.YES_OPTION) {
-        RedditClient client = app.getRedditClient();
-        if (client != null) {
-          Map<String, Object> args = Map.of(
-              "number", numberField.getText(),
-              "title", titleField.getText(),
-              "artist", artistField.getText(),
-              "source", sourceField.getText(),
-              "comment", commentField.getText(),
-              "postNsfw", postNsfwBox.isSelected(),
-              "sourceNsfw", sourceNsfwBox.isSelected()
-          );
-          String subreddit = app.preferences.getString(DailyImagePoster.PREF_SUBREDDIT_NAME);
-          if (StringHelper.isNullOrBlank(subreddit)) {
-            JOptionPane.showMessageDialog(this, "Subreddit must be defined");
-            return;
-          }
-          ST titleTemplate = new ST(app.preferences.getString(DailyImagePoster.PREF_TITLE_FORMAT));
-          args.forEach(titleTemplate::add);
-          String title = titleTemplate.render();
-          ST commentTemplate = new ST(app.preferences.getString(DailyImagePoster.PREF_COMMENT_FORMAT));
-          args.forEach(commentTemplate::add);
-          String comment = commentTemplate.render();
-          client.uploadAndSubmitImage(selectedImageFile, null, new SubmitOptions()
-              .setSubreddit(subreddit)
-              .setNsfw(postNsfwBox.isSelected())
-              .setFlairId(app.preferences.getString(DailyImagePoster.PREF_FLAIR_ID))
-              .setFlairText(app.preferences.getString(DailyImagePoster.PREF_FLAIR_TEXT))
-              .setTitle(title), true).whenComplete((submissionUrl, ex) -> {
-            if (ex == null) {
-              DailyImagePoster.LOG.info("Link submission successful: {}", submissionUrl);
-              String linkId = StringHelper.getRedditLinkId(submissionUrl);
-              if (linkId != null) {
-                client.submitComment("t3_" + linkId, comment).whenComplete((s, ex2) -> {
-                  if (ex2 == null) {
-                    DailyImagePoster.LOG.info("Comment submission successful: {}", s);
-                  } else {
-                    DailyImagePoster.LOG.warn("Comment post unsuccessful", ex2);
-                  }
-                  // TODO Add post to database and copy image to images directory
-                });
+    RedditClient client = app.getRedditClient();
+    if (selectedImage == null || client == null) {
+      return;
+    }
+    int response = JOptionPane.showConfirmDialog(this, "Are you sure you want to submit this?", "Confirm", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
+    if (response != JOptionPane.YES_OPTION) {
+      return;
+    }
+    String number = numberField.getText();
+    int majorNum, minorNum;
+    int numberIndex = number.indexOf('.');
+    try {
+      if (numberIndex >= 0) {
+        majorNum = Integer.parseInt(number.substring(0, numberIndex));
+        minorNum = Integer.parseInt(number.substring(numberIndex + 1));
+      } else {
+        majorNum = Integer.parseInt(number);
+        minorNum = 0;
+      }
+    } catch (NumberFormatException e) {
+      JOptionPane.showMessageDialog(this, "Invalid number format, must be either an integer or a decimal", "Error", JOptionPane.WARNING_MESSAGE);
+      return;
+    }
+    String title = titleField.getText();
+    String artist = artistField.getText();
+    String source = sourceField.getText();
+    String commentText = StringHelper.nullIfBlank(commentField.getText());
+    boolean postNsfw = postNsfwBox.isSelected();
+    boolean sourceNsfw = sourceNsfwBox.isSelected();
+    if (title.isBlank() || artist.isBlank() || source.isBlank()) {
+      JOptionPane.showMessageDialog(this, "Must set title, artist, and source", "Error", JOptionPane.WARNING_MESSAGE);
+      return;
+    }
+    Map<String, Object> args = new HashMap<>();
+    args.put("number", number);
+    args.put("title", title);
+    args.put("artist", artist);
+    args.put("source", source);
+    if (commentText != null) {
+      args.put("comment", commentText);
+    }
+    args.put("postNsfw", postNsfw);
+    args.put("sourceNsfw", sourceNsfw);
+    String subreddit = app.preferences.getString(DailyImagePoster.PREF_SUBREDDIT_NAME);
+    if (StringHelper.isNullOrBlank(subreddit)) {
+      JOptionPane.showMessageDialog(this, "Subreddit must be defined");
+      return;
+    }
+    String fileName;
+    try {
+      fileName = app.images().copy(selectedImageFile, majorNum);
+    } catch (IOException e) {
+      DailyImagePoster.LOG.warn("Could not copy image: " + selectedImageFile, e);
+      JOptionPane.showMessageDialog(this, "Could not copy image\n" + e.getMessage(), "Error", JOptionPane.WARNING_MESSAGE);
+      return;
+    }
+    String renderedTitle = StringHelper.renderFromTemplate(app.preferences.getString(DailyImagePoster.PREF_TITLE_FORMAT), args);
+    String renderedComment = StringHelper.renderFromTemplate(app.preferences.getString(DailyImagePoster.PREF_COMMENT_FORMAT), args);
+    client.uploadAndSubmitImage(selectedImageFile, null, new SubmitOptions()
+        .setSubreddit(subreddit)
+        .setNsfw(postNsfwBox.isSelected())
+        .setFlairId(app.preferences.getString(DailyImagePoster.PREF_FLAIR_ID))
+        .setFlairText(app.preferences.getString(DailyImagePoster.PREF_FLAIR_TEXT))
+        .setTitle(renderedTitle), true).whenComplete((submissionUrl, ex) -> {
+      if (ex == null) {
+        DailyImagePoster.LOG.info("Link submission successful: {}", submissionUrl);
+        String linkId = StringHelper.getRedditLinkId(submissionUrl);
+        if (linkId != null) {
+          client.submitComment("t3_" + linkId, renderedComment).whenComplete((jqr, ex2) -> {
+            String commentId = null;
+            if (ex2 == null) {
+              Comment comment = StringHelper.parseCommentFromJQuery(jqr);
+              if (comment == null) {
+                DailyImagePoster.LOG.warn("Could not parse comment from JQuery response: {}", jqr);
               } else {
-                DailyImagePoster.LOG.warn("Could not parse link ID from URL: {}", submissionUrl);
+                DailyImagePoster.LOG.info("Comment successfully posted: https://reddit.com{}", comment.data.permalink);
+                commentId = comment.data.id;
               }
             } else {
-              DailyImagePoster.LOG.warn("Upload unsuccessful", ex);
+              DailyImagePoster.LOG.warn("Comment post unsuccessful", ex2);
+            }
+            Post post = new Post(UUID.randomUUID(), fileName, majorNum, (byte) minorNum, title, artist, source,
+                commentText, postNsfw, sourceNsfw, linkId, commentId, null, LocalDateTime.now());
+            app.posts().add(post);
+            if (commentId == null) {
+              JOptionPane.showMessageDialog(null, "Successfully posted, but comment could not be posted");
+            } else {
+              JOptionPane.showMessageDialog(null, "Successfully posted!");
+            }
+            if (app.preferences.getBoolean(DailyImagePoster.PREF_OPEN_AFTER_POST)) {
+              UIHelper.browse(submissionUrl);
             }
           });
+        } else {
+          DailyImagePoster.LOG.warn("Could not parse link ID from URL: {}", submissionUrl);
+          JOptionPane.showMessageDialog(this, "Unexpected response from Reddit\n" + submissionUrl, "Error",JOptionPane.WARNING_MESSAGE);
         }
+      } else {
+        JOptionPane.showMessageDialog(this, "Upload unsuccessful\n" + ex.getMessage(), "Error", JOptionPane.WARNING_MESSAGE);
+        DailyImagePoster.LOG.warn("Upload unsuccessful", ex);
       }
-    }
+    });
   }
 
 }

@@ -56,19 +56,21 @@ public class DailyImagePoster {
       PREF_SIMILARITY_THRESHOLD = "image.similarityThreshold",
       PREF_WAIFU2X_LOCATION = "image.waifu2xLocation",
       PREF_WAIFU2X_ARGS = "image.waifu2xArgs",
+      PREF_OPEN_AFTER_POST = "general.openAfterPost",
       PREF_LAST_SELECTED_HISTORY = "legacy.lastSelectedDb";
 
-  private static final Map<String, Object> DEFAULT_PREFERENCES = Map.of(
-      PREF_USER_AGENT, "desktop:me.whizvox.dailyimageposter:v0.1 (by /u/whizvox)",
-      PREF_TITLE_FORMAT, "<title> | Daily Image #<number>",
-      PREF_COMMENT_FORMAT, "* Artist: <artist>\n* Source: <source><if(sourceNsfw)> **(NSFW Warning!)**<endif><if(comment)>\n\n---\n\n<comment><endif>",
-      PREF_IMAGE_QUALITY, 90,
-      PREF_MIN_IMAGE_DIMENSION, 750,
-      PREF_MAX_IMAGE_SIZE, 1_100_000,
-      PREF_IMAGE_HASH_ALGORITHM, "perceptive",
-      PREF_IMAGE_HASH_BIT_RES, 32,
-      PREF_SIMILARITY_THRESHOLD, 0.2,
-      PREF_WAIFU2X_ARGS, "-c 9 -q 90"
+  private static final Map<String, Object> DEFAULT_PREFERENCES = Map.ofEntries(
+      Map.entry(PREF_USER_AGENT, "desktop:me.whizvox.dailyimageposter:v0.1 (by /u/whizvox)"),
+      Map.entry(PREF_TITLE_FORMAT, "<title> | Daily Image #<number>"),
+      Map.entry(PREF_COMMENT_FORMAT, "* Artist: <artist>\n* Source: <source><if(sourceNsfw)> **(NSFW Warning!)**<endif><if(comment)>\n\n---\n\n<comment><endif>"),
+      Map.entry(PREF_IMAGE_QUALITY, 90),
+      Map.entry(PREF_MIN_IMAGE_DIMENSION, 750),
+      Map.entry(PREF_MAX_IMAGE_SIZE, 1_100_000),
+      Map.entry(PREF_IMAGE_HASH_ALGORITHM, "perceptive"),
+      Map.entry(PREF_IMAGE_HASH_BIT_RES, 32),
+      Map.entry(PREF_SIMILARITY_THRESHOLD, 0.2),
+      Map.entry(PREF_WAIFU2X_ARGS, "-c 9 -q 90"),
+      Map.entry(PREF_OPEN_AFTER_POST, true)
   );
 
   private final DIPArguments arguments;
@@ -150,6 +152,10 @@ public class DailyImagePoster {
     // attempt to re-use previously stored access token
     String accessToken = preferences.getString(PREF_ACCESS_TOKEN);
     LocalDateTime accessTokenExpires = preferences.getDateTime(PREF_ACCESS_TOKEN_EXPIRES);
+    if (accessTokenExpires.isBefore(LocalDateTime.now())) {
+      accessToken = null;
+      accessTokenExpires = null;
+    }
     if (client != null && client.hasAccessToken()) {
       if (client.isAccessTokenExpired()) {
         client.revokeToken();
