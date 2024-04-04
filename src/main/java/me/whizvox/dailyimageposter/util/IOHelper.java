@@ -45,6 +45,14 @@ public class IOHelper {
     return sha1(path, 4096); // 4 KB
   }
 
+  public static void mkdirs(Path dir) {
+    try {
+      Files.createDirectories(dir);
+    } catch (IOException e) {
+      throw new RuntimeException("Could not create directories to " + dir, e);
+    }
+  }
+
   private static BufferedImage prepareImage(BufferedImage image, int width, int height) {
     boolean resize = width != image.getWidth() || height != image.getHeight();
     // image won't save as JPEG if color space has alpha component

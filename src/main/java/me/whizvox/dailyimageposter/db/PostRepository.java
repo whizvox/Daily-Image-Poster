@@ -210,7 +210,7 @@ public class PostRepository extends Repository<Post> {
   }
 
   @Override
-  protected Post fromRow0(ResultSet rs) throws SQLException {
+  protected Post _fromRow(ResultSet rs) throws SQLException {
     return new Post(
         UUID.fromString(rs.getString(1)),
         rs.getString(2),

@@ -32,7 +32,7 @@ public class ImageHashRepository extends Repository<ImageHash> {
   }
 
   @Override
-  protected ImageHash fromRow0(ResultSet rs) throws SQLException {
+  protected ImageHash _fromRow(ResultSet rs) throws SQLException {
     return new ImageHash(
         rs.getString(1),
         new Hash(

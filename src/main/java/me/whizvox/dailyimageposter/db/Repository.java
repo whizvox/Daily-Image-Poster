@@ -84,7 +84,7 @@ public abstract class Repository<T> {
       prepareStatement(stmt, args);
       ResultSet rs = stmt.executeQuery();
       while (rs.next()) {
-        T row = fromRow0(rs);
+        T row = _fromRow(rs);
         consumer.accept(row);
       }
     } catch (SQLException e) {
@@ -110,12 +110,12 @@ public abstract class Repository<T> {
     return exists(sql, List.of());
   }
 
-  protected abstract T fromRow0(ResultSet rs) throws SQLException;
+  protected abstract T _fromRow(ResultSet rs) throws SQLException;
 
   @Nullable
   protected T fromRow(ResultSet rs) throws SQLException {
     if (rs.next()) {
-      return fromRow0(rs);
+      return _fromRow(rs);
     }
     return null;
   }
@@ -123,7 +123,7 @@ public abstract class Repository<T> {
   protected List<T> fromRows(ResultSet rs) throws SQLException {
     List<T> list = new ArrayList<>();
     while (rs.next()) {
-      list.add(fromRow0(rs));
+      list.add(_fromRow(rs));
     }
     return list;
   }

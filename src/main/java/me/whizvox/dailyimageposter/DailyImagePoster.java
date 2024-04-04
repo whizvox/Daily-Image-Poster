@@ -2,7 +2,9 @@ package me.whizvox.dailyimageposter;
 
 import dev.brachtendorf.jimagehash.hashAlgorithms.*;
 import dev.brachtendorf.jimagehash.hashAlgorithms.experimental.HogHash;
-import me.whizvox.dailyimageposter.db.BackupManager;
+import me.whizvox.dailyimageposter.backup.BackupIntegrityReport;
+import me.whizvox.dailyimageposter.backup.BackupRepository;
+import me.whizvox.dailyimageposter.backup.BackupService;
 import me.whizvox.dailyimageposter.db.ImageHashRepository;
 import me.whizvox.dailyimageposter.db.ImageManager;
 import me.whizvox.dailyimageposter.db.PostRepository;
@@ -82,7 +84,8 @@ public class DailyImagePoster {
   private Connection conn;
   private PostRepository posts;
   private ImageManager imageManager;
-  private BackupManager backupManager;
+  private BackupRepository backupRepo;
+  private BackupService backupService;
   private ImageHashRepository hashRepo;
 
   public DailyImagePoster(DIPArguments arguments) {
@@ -98,7 +101,8 @@ public class DailyImagePoster {
       throw new RuntimeException("Could not create temp directory", e);
     }
     imageManager = null;
-    backupManager = new BackupManager(Paths.get("backups"));
+    backupRepo = null;
+    backupService = null;
     hashRepo = null;
   }
 
@@ -122,15 +126,17 @@ public class DailyImagePoster {
   }
 
   private void initDatabase(String dbName) throws SQLException {
+    conn = DriverManager.getConnection("jdbc:sqlite:" + dbName);
+    backupRepo = new BackupRepository(conn);
+    backupRepo.create();
+    backupService = new BackupService(Paths.get("backups"), backupRepo);
     Path dbPath = Paths.get(dbName);
     if (Files.exists(dbPath)) {
-      try {
-        backupManager.createBackup(dbPath, false);
-      } catch (IOException e) {
-        LOG.warn("Could not create backup of database " + dbName, e);
-      }
+      backupService.createBackup(dbPath);
     }
-    conn = DriverManager.getConnection("jdbc:sqlite:" + dbName);
+    BackupIntegrityReport report = backupService.verifyIntegrity(true, true);
+    report.log();
+    backupService.cleanupOldBackups(dbName, 20);
     posts = new PostRepository(conn);
     posts.create();
     hashRepo = new ImageHashRepository(conn);
@@ -216,11 +222,6 @@ public class DailyImagePoster {
   }
 
   private void close() {
-    try {
-      backupManager.saveMetaData();
-    } catch (IOException e) {
-      LOG.warn("Could not save backup metadata", e);
-    }
     try {
       conn.close();
     } catch (SQLException e) {
