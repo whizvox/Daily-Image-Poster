@@ -8,6 +8,7 @@ import javax.swing.text.JTextComponent;
 import java.util.HashMap;
 import java.util.Map;
 
+import static me.whizvox.dailyimageposter.DailyImagePoster.LOG;
 import static me.whizvox.dailyimageposter.util.UIHelper.GAP_SIZE;
 
 public class PreferencesPanel extends JPanel {
@@ -65,7 +66,7 @@ public class PreferencesPanel extends JPanel {
         case 1 -> changePrefsPanel(new BackupsPrefsPanel(this));
         case 2 -> changePrefsPanel(new RedditPrefsPanel(this));
         case 3 -> changePrefsPanel(new ImagesPrefsPanel(this));
-        default -> DailyImagePoster.LOG.warn("Invalid preferences selection: {}", index);
+        default -> LOG.warn("Invalid preferences selection: {}", index);
       }
     });
     saveButton.addActionListener(event -> saveAll());

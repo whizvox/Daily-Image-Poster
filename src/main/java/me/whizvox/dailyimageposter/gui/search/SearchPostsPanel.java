@@ -2,9 +2,9 @@ package me.whizvox.dailyimageposter.gui.search;
 
 import com.github.lgooddatepicker.components.DateTimePicker;
 import me.whizvox.dailyimageposter.DailyImagePoster;
-import me.whizvox.dailyimageposter.db.Post;
 import me.whizvox.dailyimageposter.gui.PostTableModel;
 import me.whizvox.dailyimageposter.gui.ViewPostPanel;
+import me.whizvox.dailyimageposter.post.Post;
 
 import javax.swing.*;
 import java.time.LocalDateTime;
@@ -198,7 +198,6 @@ public class SearchPostsPanel extends JPanel {
     resultsTable.getSelectionModel().addListSelectionListener(e -> {
       selectedPost = tableModel.getPost(((ListSelectionModel) e.getSource()).getLeadSelectionIndex());
       viewButton.setEnabled(true);
-      DailyImagePoster.LOG.debug("SELECTED POST: {}", selectedPost);
     });
     viewButton.addActionListener(event -> {
       if (selectedPost != null) {

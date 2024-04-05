@@ -1,4 +1,4 @@
-package me.whizvox.dailyimageposter.db;
+package me.whizvox.dailyimageposter.post;
 
 import java.time.LocalDateTime;
 import java.util.UUID;

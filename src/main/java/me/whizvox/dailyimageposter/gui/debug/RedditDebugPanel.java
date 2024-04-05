@@ -4,6 +4,7 @@ import me.whizvox.dailyimageposter.DailyImagePoster;
 
 import javax.swing.*;
 
+import static me.whizvox.dailyimageposter.DailyImagePoster.LOG;
 import static me.whizvox.dailyimageposter.util.UIHelper.GAP_SIZE;
 
 public class RedditDebugPanel extends JPanel {
@@ -53,9 +54,9 @@ public class RedditDebugPanel extends JPanel {
       DailyImagePoster.getInstance().getRedditClient().getSubreddit(subredditField.getText())
           .whenComplete((subreddit, ex) -> {
             if (ex == null) {
-              DailyImagePoster.LOG.info("Subreddit info: {}", subreddit);
+              LOG.info("Subreddit info: {}", subreddit);
             } else {
-              DailyImagePoster.LOG.warn("Could not retrieve subreddit info", ex);
+              LOG.warn("Could not retrieve subreddit info", ex);
             }
           });
     });
@@ -63,9 +64,9 @@ public class RedditDebugPanel extends JPanel {
       DailyImagePoster.getInstance().getRedditClient().getLink(linkField.getText())
           .whenComplete((link, ex) -> {
             if (ex == null) {
-              DailyImagePoster.LOG.info("Link info: {}", link);
+              LOG.info("Link info: {}", link);
             } else {
-              DailyImagePoster.LOG.warn("Could not retrieve link info", ex);
+              LOG.warn("Could not retrieve link info", ex);
             }
           });
     });
@@ -73,9 +74,9 @@ public class RedditDebugPanel extends JPanel {
       DailyImagePoster.getInstance().getRedditClient().getComment(commentField.getText())
           .whenComplete((comment, ex) -> {
             if (ex == null) {
-              DailyImagePoster.LOG.info("Comment info: {}", comment);
+              LOG.info("Comment info: {}", comment);
             } else {
-              DailyImagePoster.LOG.warn("Could not retrieve comment info", ex);
+              LOG.warn("Could not retrieve comment info", ex);
             }
           });
     });

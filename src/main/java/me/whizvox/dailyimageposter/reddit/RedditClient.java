@@ -6,7 +6,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.github.mizosoft.methanol.Methanol;
 import com.github.mizosoft.methanol.MultipartBodyPublisher;
 import com.github.mizosoft.methanol.MutableRequest;
-import me.whizvox.dailyimageposter.DailyImagePoster;
 import me.whizvox.dailyimageposter.exception.UnexpectedResponseException;
 import me.whizvox.dailyimageposter.reddit.pojo.*;
 import me.whizvox.dailyimageposter.util.JsonHelper;
@@ -30,6 +29,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
+
+import static me.whizvox.dailyimageposter.DailyImagePoster.LOG;
 
 public class RedditClient {
 
@@ -160,9 +161,9 @@ public class RedditClient {
     if (attempts > maxAttempts) {
       throw new UnexpectedResponseException(response);
     }
-    DailyImagePoster.LOG.debug("Response received: {}", StringHelper.responseToString(response));
+    LOG.debug("Response received: {}", StringHelper.responseToString(response));
     if (response.statusCode() / 100 != 2) {
-      DailyImagePoster.LOG.warn("Unexpected response received, trying again: {}", StringHelper.responseToString(response));
+      LOG.warn("Unexpected response received, trying again: {}", StringHelper.responseToString(response));
       return handleResponse(response, func, maxAttempts, attempts + 1);
     }
     return func.apply(response.body());
@@ -172,13 +173,13 @@ public class RedditClient {
     // update access token if expired
     CompletableFuture<?> first;
     if (checkAccessToken && isAccessTokenExpired()) {
-      DailyImagePoster.LOG.info("Access token expired, queueing attempt to retrieve another one");
+      LOG.info("Access token expired, queueing attempt to retrieve another one");
       first = fetchAccessToken();
     } else {
       first = CompletableFuture.completedFuture(null);
     }
     return first.thenCompose(nil -> {
-      DailyImagePoster.LOG.debug("Sending {} request to {}...", req.method(), req.uri());
+      LOG.debug("Sending {} request to {}...", req.method(), req.uri());
           return client.sendAsync(req, HttpResponse.BodyHandlers.ofString())
               .thenApply(res -> handleResponse(res, func, 3, 0));
         }
@@ -276,7 +277,7 @@ public class RedditClient {
         "mimetype", type
     ), null, bearerAuth()).build();
     return send(req, UploadMediaLease.class).thenCompose(lease -> {
-      DailyImagePoster.LOG.debug("Received media lease from Reddit");
+      LOG.debug("Received media lease from Reddit");
       String url = "https:" + lease.args.action;
       Map<String, Object> args = new HashMap<>();
       lease.args.fields.forEach(entry -> args.put(entry.name, entry.value));
@@ -306,7 +307,7 @@ public class RedditClient {
     // 4) Finally, set up a websocket connection to receive the submission URL
     // the final received JSON looks like this: {"type":"success","payload":{"redirect":"https://www.reddit.com/r/<subreddit>/comments/<submissionId>/<slug>/"}}
     return uploadImage(imageFile, imageType).thenCompose(result -> {
-      DailyImagePoster.LOG.debug("Uploaded image: {}", result);
+      LOG.debug("Uploaded image: {}", result);
       return submit(options.setUrl(result.imageUrl()).setKind(SubmitOptions.Kind.IMAGE)).thenApply(s -> {
         if (!useWebsocket || result.websocketUrl() == null) {
           return null;
@@ -320,21 +321,21 @@ public class RedditClient {
               @Override
               public CompletionStage<?> onText(WebSocket webSocket, CharSequence data, boolean last) {
                 String s = data.toString();
-                DailyImagePoster.LOG.debug("Text received from websocket: {}", s);
+                LOG.debug("Text received from websocket: {}", s);
                 message.set(s);
                 message.notify();
                 return WebSocket.Listener.super.onText(webSocket, data, last);
               }}).join();
         // wait until websocket connection receives message
-        DailyImagePoster.LOG.debug("Websocket opened");
+        LOG.debug("Websocket opened");
         synchronized (message) {
           try {
             message.wait(10000);
           } catch (InterruptedException e) {
-            DailyImagePoster.LOG.debug("Websocket response thread interrupted", e);
+            LOG.debug("Websocket response thread interrupted", e);
           }
           ws.sendClose(1000, "received data, no longer needed");
-          DailyImagePoster.LOG.debug("Websocket closed");
+          LOG.debug("Websocket closed");
           try {
             String msg = message.get();
             JsonNode root = JsonHelper.OBJECT_MAPPER.readTree(msg);

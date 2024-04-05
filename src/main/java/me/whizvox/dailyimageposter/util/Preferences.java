@@ -1,6 +1,5 @@
 package me.whizvox.dailyimageposter.util;
 
-import me.whizvox.dailyimageposter.DailyImagePoster;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
@@ -17,6 +16,8 @@ import java.util.Objects;
 import java.util.Properties;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
+
+import static me.whizvox.dailyimageposter.DailyImagePoster.LOG;
 
 public class Preferences {
 
@@ -44,9 +45,9 @@ public class Preferences {
   public void save() {
     try (OutputStream out = Files.newOutputStream(filePath)) {
       values.store(out, null);
-      DailyImagePoster.LOG.info("Saved preferences to {}", filePath);
+      LOG.info("Saved preferences to {}", filePath);
     } catch (IOException e) {
-      DailyImagePoster.LOG.debug("Could not save preferences to " + filePath, e);
+      LOG.debug("Could not save preferences to " + filePath, e);
     }
   }
 
@@ -55,9 +56,9 @@ public class Preferences {
     if (Files.exists(filePath)) {
       try (InputStream in = Files.newInputStream(filePath, StandardOpenOption.CREATE)) {
         values.load(in);
-        DailyImagePoster.LOG.info("Loaded preferences from {}", filePath);
+        LOG.info("Loaded preferences from {}", filePath);
       } catch (IOException e) {
-        DailyImagePoster.LOG.warn("Could not load preferences from " + filePath, e);
+        LOG.warn("Could not load preferences from " + filePath, e);
       }
     }
   }
@@ -69,7 +70,7 @@ public class Preferences {
       try {
         return decoder.apply(value);
       } catch (Exception e) {
-        DailyImagePoster.LOG.warn("Could not parse value for preference " + key, e);
+        LOG.warn("Could not parse value for preference " + key, e);
       }
     }
     return (T) defaultValues.get(key);

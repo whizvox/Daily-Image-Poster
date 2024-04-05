@@ -1,6 +1,6 @@
 package me.whizvox.dailyimageposter.gui;
 
-import me.whizvox.dailyimageposter.db.Post;
+import me.whizvox.dailyimageposter.post.Post;
 
 import javax.swing.*;
 import java.util.List;

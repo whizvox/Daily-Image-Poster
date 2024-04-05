@@ -1,4 +1,4 @@
-package me.whizvox.dailyimageposter.db;
+package me.whizvox.dailyimageposter.image;
 
 import dev.brachtendorf.jimagehash.hash.Hash;
 

@@ -1,7 +1,8 @@
-package me.whizvox.dailyimageposter.db;
+package me.whizvox.dailyimageposter.image;
 
 import dev.brachtendorf.jimagehash.hash.Hash;
 import dev.brachtendorf.jimagehash.hashAlgorithms.HashingAlgorithm;
+import me.whizvox.dailyimageposter.post.Post;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;

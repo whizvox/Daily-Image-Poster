@@ -8,6 +8,8 @@ import java.awt.*;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 
+import static me.whizvox.dailyimageposter.DailyImagePoster.LOG;
+
 public class RedditLinkFlairsDialog extends JDialog {
 
   private final DailyImagePoster app;
@@ -61,7 +63,7 @@ public class RedditLinkFlairsDialog extends JDialog {
 
       table.getSelectionModel().addListSelectionListener(e -> {
         selectedFlair = tableModel.getFlair(((ListSelectionModel) e.getSource()).getLeadSelectionIndex());
-        DailyImagePoster.LOG.debug("Selected flair: {}", selectedFlair);
+        LOG.debug("Selected flair: {}", selectedFlair);
       });
       useButton.addActionListener(e -> dispose());
     }
@@ -69,7 +71,7 @@ public class RedditLinkFlairsDialog extends JDialog {
     public void refreshFlairs(String subreddit) {
       app.getRedditClient().getLinkFlairs(subreddit).whenComplete((flairs, e) -> {
         if (e != null) {
-          DailyImagePoster.LOG.warn("Could not retrieve link flairs", e);
+          LOG.warn("Could not retrieve link flairs", e);
         } else {
           tableModel.setData(flairs);
         }

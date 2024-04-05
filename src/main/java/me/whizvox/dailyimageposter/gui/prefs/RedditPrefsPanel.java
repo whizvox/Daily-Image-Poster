@@ -10,6 +10,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.util.Map;
 
+import static me.whizvox.dailyimageposter.DailyImagePoster.LOG;
 import static me.whizvox.dailyimageposter.util.UIHelper.GAP_SIZE;
 
 public class RedditPrefsPanel extends AbstractPrefsPanel {
@@ -169,7 +170,7 @@ public class RedditPrefsPanel extends AbstractPrefsPanel {
           testResultLabel.setForeground(Color.CYAN);
         }).exceptionally(throwable -> {
           testResultLabel.setText("Test request failed!");
-          DailyImagePoster.LOG.warn("Test request failed", throwable);
+          LOG.warn("Test request failed", throwable);
           testResultLabel.setForeground(Color.RED);
           return null;
         }).whenComplete((unused, throwable) -> {
@@ -178,14 +179,14 @@ public class RedditPrefsPanel extends AbstractPrefsPanel {
             testResultLabel.setForeground(Color.GREEN);
           }).exceptionally(throwable2 -> {
             testResultLabel.setText("Revoking token failed!");
-            DailyImagePoster.LOG.warn("Token revocation failed", throwable2);
+            LOG.warn("Token revocation failed", throwable2);
             testResultLabel.setForeground(Color.RED);
             return null;
           });
         });
       }).exceptionally(throwable -> {
         testResultLabel.setText("Access token fetch failed: " + throwable.getMessage());
-        DailyImagePoster.LOG.warn("Access token fetch failed", throwable);
+        LOG.warn("Access token fetch failed", throwable);
         testResultLabel.setForeground(Color.RED);
         return null;
       }).whenComplete((unused, throwable) -> {
@@ -212,7 +213,7 @@ public class RedditPrefsPanel extends AbstractPrefsPanel {
 
   @Override
   public void saveChanges(Map<String, Object> prefs) {
-    prefs.put(DailyImagePoster.PREF_CLIENT_ID, clientIdField.getText());
+    prefs.put(DailyImagePoster.PREF_CLIENT_ID, new String(clientIdField.getPassword()));
     prefs.put(DailyImagePoster.PREF_CLIENT_SECRET, new String(clientSecretField.getPassword()));
     prefs.put(DailyImagePoster.PREF_USERNAME, usernameField.getText());
     prefs.put(DailyImagePoster.PREF_PASSWORD, new String(passwordField.getPassword()));

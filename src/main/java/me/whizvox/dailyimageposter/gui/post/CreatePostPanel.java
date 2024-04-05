@@ -1,10 +1,10 @@
 package me.whizvox.dailyimageposter.gui.post;
 
 import me.whizvox.dailyimageposter.DailyImagePoster;
-import me.whizvox.dailyimageposter.db.ImageManager;
-import me.whizvox.dailyimageposter.db.Post;
 import me.whizvox.dailyimageposter.gui.ListPostsPanel;
 import me.whizvox.dailyimageposter.gui.imghash.ImageHashProgressDialog;
+import me.whizvox.dailyimageposter.image.ImageManager;
+import me.whizvox.dailyimageposter.post.Post;
 import me.whizvox.dailyimageposter.reddit.RedditClient;
 import me.whizvox.dailyimageposter.reddit.SubmitOptions;
 import me.whizvox.dailyimageposter.reddit.pojo.Comment;
@@ -36,6 +36,7 @@ import java.util.List;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static me.whizvox.dailyimageposter.DailyImagePoster.LOG;
 import static me.whizvox.dailyimageposter.util.UIHelper.GAP_SIZE;
 
 public class CreatePostPanel extends JPanel {
@@ -262,7 +263,7 @@ public class CreatePostPanel extends JPanel {
               updateImage(droppedFiles.get(0).toPath(), true);
             }
           } catch (UnsupportedFlavorException | IOException e) {
-            DailyImagePoster.LOG.warn("Could not perform drag-and-drop operation", e);
+            LOG.warn("Could not perform drag-and-drop operation", e);
           }
         }
       });
@@ -340,7 +341,7 @@ public class CreatePostPanel extends JPanel {
     try (InputStream in = Files.newInputStream(selectedImageFile)) {
       image = ImageIO.read(in);
     } catch (IOException e) {
-      DailyImagePoster.LOG.warn("Could not read image", e);
+      LOG.warn("Could not read image", e);
       return;
     }
     imagePreviewLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
@@ -350,7 +351,7 @@ public class CreatePostPanel extends JPanel {
     try {
       imageSize = Files.size(imagePath);
     } catch (IOException e) {
-      DailyImagePoster.LOG.warn("Could not get file size for " + imagePath, e);
+      LOG.warn("Could not get file size for " + imagePath, e);
       imageSize = 0;
     }
     imageInfoLabel.setText(StringHelper.formatBytesLength(imageSize) + " | " + imageWidth + "x" + imageHeight);
@@ -375,7 +376,7 @@ public class CreatePostPanel extends JPanel {
       try {
         IOHelper.saveAsJpeg(selectedImage, newPath, (int) currentWidth, (int) currentHeight, quality);
         currentImageSize = Files.size(newPath);
-        DailyImagePoster.LOG.debug("Image shrink progress: path={}, size={}, dimensions={}x{}", newPath, currentImageSize, currentWidth, currentHeight);
+        LOG.debug("Image shrink progress: path={}, size={}, dimensions={}x{}", newPath, currentImageSize, currentWidth, currentHeight);
         if (currentImageSize > maxSize) {
           currentWidth *= 0.95F;
           currentHeight *= 0.95F;
@@ -384,7 +385,7 @@ public class CreatePostPanel extends JPanel {
           break;
         }
       } catch (IOException e) {
-        DailyImagePoster.LOG.warn("Could not shrink image", e);
+        LOG.warn("Could not shrink image", e);
       }
     }
     updateImage(newPath, false);
@@ -527,7 +528,7 @@ public class CreatePostPanel extends JPanel {
     try {
       fileName = app.images().copy(selectedImageFile, majorNum);
     } catch (IOException e) {
-      DailyImagePoster.LOG.warn("Could not copy image: " + selectedImageFile, e);
+      LOG.warn("Could not copy image: " + selectedImageFile, e);
       JOptionPane.showMessageDialog(this, "Could not copy image\n" + e.getMessage(), "Error", JOptionPane.WARNING_MESSAGE);
       return;
     }
@@ -540,7 +541,7 @@ public class CreatePostPanel extends JPanel {
         .setFlairText(app.preferences.getString(DailyImagePoster.PREF_FLAIR_TEXT))
         .setTitle(renderedTitle), true).whenComplete((submissionUrl, ex) -> {
       if (ex == null) {
-        DailyImagePoster.LOG.info("Link submission successful: {}", submissionUrl);
+        LOG.info("Link submission successful: {}", submissionUrl);
         String linkId = StringHelper.getRedditLinkId(submissionUrl);
         if (linkId != null) {
           client.submitComment("t3_" + linkId, renderedComment).whenComplete((jqr, ex2) -> {
@@ -548,13 +549,13 @@ public class CreatePostPanel extends JPanel {
             if (ex2 == null) {
               Comment comment = StringHelper.parseCommentFromJQuery(jqr);
               if (comment == null) {
-                DailyImagePoster.LOG.warn("Could not parse comment from JQuery response: {}", jqr);
+                LOG.warn("Could not parse comment from JQuery response: {}", jqr);
               } else {
-                DailyImagePoster.LOG.info("Comment successfully posted: https://reddit.com{}", comment.data.permalink);
+                LOG.info("Comment successfully posted: https://reddit.com{}", comment.data.permalink);
                 commentId = comment.data.id;
               }
             } else {
-              DailyImagePoster.LOG.warn("Comment post unsuccessful", ex2);
+              LOG.warn("Comment post unsuccessful", ex2);
             }
             Post post = new Post(UUID.randomUUID(), fileName, majorNum, (byte) minorNum, title, artist, source,
                 commentText, postNsfw, sourceNsfw, linkId, commentId, null, LocalDateTime.now());
@@ -569,12 +570,12 @@ public class CreatePostPanel extends JPanel {
             }
           });
         } else {
-          DailyImagePoster.LOG.warn("Could not parse link ID from URL: {}", submissionUrl);
+          LOG.warn("Could not parse link ID from URL: {}", submissionUrl);
           JOptionPane.showMessageDialog(this, "Unexpected response from Reddit\n" + submissionUrl, "Error",JOptionPane.WARNING_MESSAGE);
         }
       } else {
         JOptionPane.showMessageDialog(this, "Upload unsuccessful\n" + ex.getMessage(), "Error", JOptionPane.WARNING_MESSAGE);
-        DailyImagePoster.LOG.warn("Upload unsuccessful", ex);
+        LOG.warn("Upload unsuccessful", ex);
       }
     });
   }

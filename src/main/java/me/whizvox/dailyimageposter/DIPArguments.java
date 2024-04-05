@@ -10,4 +10,14 @@ public final class DIPArguments {
     autoRevokeRedditToken = false;
   }
 
+  public void parse(String[] args) {
+    for (String arg : args) {
+      if (arg.equals("--noreddit")) {
+        noReddit = true;
+      } else if (arg.equals("--autorevokereddit")) {
+        autoRevokeRedditToken = true;
+      }
+    }
+  }
+
 }

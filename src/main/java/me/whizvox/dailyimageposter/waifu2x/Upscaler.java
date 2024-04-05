@@ -1,7 +1,5 @@
 package me.whizvox.dailyimageposter.waifu2x;
 
-import me.whizvox.dailyimageposter.DailyImagePoster;
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -10,6 +8,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.function.Consumer;
+
+import static me.whizvox.dailyimageposter.DailyImagePoster.LOG;
 
 public class Upscaler {
 
@@ -29,7 +29,7 @@ public class Upscaler {
     cmd.add("-o");
     cmd.add(output.toAbsolutePath().toString());
     Collections.addAll(cmd, args.split(" "));
-    DailyImagePoster.LOG.debug("Running command: {}", cmd);
+    LOG.debug("Running command: {}", cmd);
     ProcessBuilder builder = new ProcessBuilder(cmd)
         .redirectErrorStream(true)
         .directory(path.getParent().toFile());
@@ -40,18 +40,18 @@ public class Upscaler {
           String line;
           // effectively waits for the process to complete
           while ((line = outReader.readLine()) != null) {
-            DailyImagePoster.LOG.debug("[CMDOUT] {}", line);
+            LOG.debug("[CMDOUT] {}", line);
           }
         }
         try (BufferedReader reader = process.errorReader()) {
           String line;
           while ((line = reader.readLine()) != null) {
-            DailyImagePoster.LOG.debug("[CMDERR] {}", line);
+            LOG.debug("[CMDERR] {}", line);
           }
         }
         onComplete.accept(true);
       } catch (IOException e) {
-        DailyImagePoster.LOG.warn("Error while running command", e);
+        LOG.warn("Error while running command", e);
         onComplete.accept(false);
       }
     });

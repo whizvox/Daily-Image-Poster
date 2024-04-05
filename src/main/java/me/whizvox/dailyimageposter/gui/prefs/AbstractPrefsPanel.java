@@ -1,11 +1,11 @@
 package me.whizvox.dailyimageposter.gui.prefs;
 
-import me.whizvox.dailyimageposter.DailyImagePoster;
-
 import javax.swing.*;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Predicate;
+
+import static me.whizvox.dailyimageposter.DailyImagePoster.LOG;
 
 public abstract class AbstractPrefsPanel extends JPanel {
 
@@ -24,10 +24,10 @@ public abstract class AbstractPrefsPanel extends JPanel {
       if (validator.test(value)) {
         prefs.put(key, value);
       } else {
-        DailyImagePoster.LOG.warn("Invalid input for " + key + ": " + valueStr);
+        LOG.warn("Invalid input for " + key + ": " + valueStr);
       }
     } catch (RuntimeException e) {
-      DailyImagePoster.LOG.warn("Invalid input for " + key + ": " + valueStr, e);
+      LOG.warn("Invalid input for " + key + ": " + valueStr, e);
     }
   }
 

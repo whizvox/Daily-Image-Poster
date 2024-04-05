@@ -2,7 +2,7 @@ package me.whizvox.dailyimageposter.gui.legacy;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import me.whizvox.dailyimageposter.DailyImagePoster;
-import me.whizvox.dailyimageposter.db.Post;
+import me.whizvox.dailyimageposter.post.Post;
 import me.whizvox.dailyimageposter.util.JsonHelper;
 import me.whizvox.dailyimageposter.util.StringHelper;
 import org.jetbrains.annotations.Nullable;
@@ -18,6 +18,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static me.whizvox.dailyimageposter.DailyImagePoster.LOG;
 import static me.whizvox.dailyimageposter.util.UIHelper.GAP_SIZE;
 
 public class ImportLegacyPanel extends JPanel {
@@ -98,13 +99,13 @@ public class ImportLegacyPanel extends JPanel {
         Path imagesDir = historyFile.getParent().resolve("images");
         List<LegacyEntry> entries = JsonHelper.OBJECT_MAPPER.readValue(historyFile.toFile(), new TypeReference<>() {});
         if (!ignoreExistingEntries) {
-          DailyImagePoster.LOG.warn("Deleting all posts and images...");
+          LOG.warn("Deleting all posts and images...");
           app.posts().deleteAll();
           app.images().consumeStream(stream -> stream.forEach(path -> {
             try {
               Files.delete(path);
             } catch (IOException e) {
-              DailyImagePoster.LOG.warn("Could not delete image " + path, e);
+              LOG.warn("Could not delete image " + path, e);
             }
           }));
         }
@@ -115,25 +116,25 @@ public class ImportLegacyPanel extends JPanel {
           if (ignoreExistingEntries) {
             Post existingPost = DailyImagePoster.getInstance().posts().getByFileName(fileName);
             if (existingPost != null) {
-              DailyImagePoster.LOG.trace("Skipping already existing entry {}", fileName);
+              LOG.trace("Skipping already existing entry {}", fileName);
               return;
             }
           }
           Post post = new Post(UUID.randomUUID(), fileName, entry.id, (byte) 0, entry.title, entry.artist, entry.source, null, false, false, entry.redditPostId, null, entry.imgurId, null);
           app.posts().add(post);
-          DailyImagePoster.LOG.debug("Added post to database: {} ({})", post.formatNumber(), StringHelper.withCutoff(post.fileName(), 40));
+          LOG.debug("Added post to database: {} ({})", post.formatNumber(), StringHelper.withCutoff(post.fileName(), 40));
           try {
             count.addAndGet(1);
             app.images().copy(imagesDir.resolve(fileName), post.number());
           } catch (IOException e) {
-            DailyImagePoster.LOG.warn("Could not import image " + fileName, e);
+            LOG.warn("Could not import image " + fileName, e);
           }
         });
         statusLabel.setText("Imported " + count.get() + " post(s)");
         importButton.setEnabled(true);
       } catch (IOException e) {
         JOptionPane.showMessageDialog(ImportLegacyPanel.this, "Could not import legacy database: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-        DailyImagePoster.LOG.warn("Could not import legacy database from " + historyFile, e);
+        LOG.warn("Could not import legacy database from " + historyFile, e);
       }
     });
   }

@@ -1,6 +1,5 @@
 package me.whizvox.dailyimageposter.backup;
 
-import me.whizvox.dailyimageposter.DailyImagePoster;
 import me.whizvox.dailyimageposter.util.IOHelper;
 import me.whizvox.dailyimageposter.util.StringHelper;
 import org.jetbrains.annotations.Nullable;
@@ -12,6 +11,8 @@ import java.time.DateTimeException;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.Consumer;
+
+import static me.whizvox.dailyimageposter.DailyImagePoster.LOG;
 
 public class BackupService {
 
@@ -32,7 +33,7 @@ public class BackupService {
     try (var walk = Files.walk(root, 1).filter(p -> !p.equals(root))) {
       walk.forEach(consumer);
     } catch (IOException e) {
-      DailyImagePoster.LOG.warn("Could not perform walk of " + root, e);
+      LOG.warn("Could not perform walk of " + root, e);
     }
   }
 
@@ -96,7 +97,7 @@ public class BackupService {
     String hash = IOHelper.sha1(path);
     Backup backup = repo.getByHash(hash);
     if (backup != null) {
-      DailyImagePoster.LOG.debug("Skipping creating backup of {}, found identical hash", path);
+      LOG.debug("Skipping creating backup of {}, found identical hash", path);
       return null;
     }
     String fileName = path.getFileName().toString();
@@ -108,16 +109,16 @@ public class BackupService {
       throw new RuntimeException("Could not create backup copy of " + path + " to " + backupFile, e);
     }
     repo.add(backupFileName, fileName, hash, LocalDateTime.now());
-    DailyImagePoster.LOG.info("Created backup of {} at {}", path, backupFile);
+    LOG.info("Created backup of {} at {}", path, backupFile);
     return backupFileName;
   }
 
   public void cleanupOldBackups(String origFileName, int max) {
     repo.getAllOf(origFileName).stream()
-        .sorted(Comparator.comparing(Backup::created))
+        .sorted(Comparator.comparing(Backup::created).reversed())
         .skip(max)
         .forEach(backup -> {
-          DailyImagePoster.LOG.debug("Deleting old backup {}", backup.fileName());
+          LOG.debug("Deleting old backup {}", backup.fileName());
           //repo.delete(backup.fileName());
         });
   }

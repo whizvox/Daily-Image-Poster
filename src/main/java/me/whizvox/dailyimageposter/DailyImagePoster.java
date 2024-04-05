@@ -5,10 +5,10 @@ import dev.brachtendorf.jimagehash.hashAlgorithms.experimental.HogHash;
 import me.whizvox.dailyimageposter.backup.BackupIntegrityReport;
 import me.whizvox.dailyimageposter.backup.BackupRepository;
 import me.whizvox.dailyimageposter.backup.BackupService;
-import me.whizvox.dailyimageposter.db.ImageHashRepository;
-import me.whizvox.dailyimageposter.db.ImageManager;
-import me.whizvox.dailyimageposter.db.PostRepository;
 import me.whizvox.dailyimageposter.gui.post.CreatePostFrame;
+import me.whizvox.dailyimageposter.image.ImageHashRepository;
+import me.whizvox.dailyimageposter.image.ImageManager;
+import me.whizvox.dailyimageposter.post.PostRepository;
 import me.whizvox.dailyimageposter.reddit.RedditClient;
 import me.whizvox.dailyimageposter.reddit.RedditClientProperties;
 import me.whizvox.dailyimageposter.util.Preferences;
@@ -270,15 +270,7 @@ public class DailyImagePoster {
 
   public static void main(String[] args) {
     DIPArguments arguments = new DIPArguments();
-    for (String arg : args) {
-      if (arg.equals("--noreddit")) {
-        arguments.noReddit = true;
-      }
-      if (arg.equals("--autorevokereddit")) {
-        arguments.autoRevokeRedditToken = true;
-      }
-    }
-
+    arguments.parse(args);
     instance = new DailyImagePoster(arguments);
     instance.preferences.load();
     try {
@@ -288,7 +280,6 @@ public class DailyImagePoster {
     }
     instance.onPreferencesUpdated();
     instance.changeFrame(CreatePostFrame::new, null);
-
   }
 
 }

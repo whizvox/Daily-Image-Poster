@@ -1,6 +1,7 @@
-package me.whizvox.dailyimageposter.db;
+package me.whizvox.dailyimageposter.image;
 
 import dev.brachtendorf.jimagehash.hash.Hash;
+import me.whizvox.dailyimageposter.db.Repository;
 
 import java.math.BigInteger;
 import java.sql.Connection;

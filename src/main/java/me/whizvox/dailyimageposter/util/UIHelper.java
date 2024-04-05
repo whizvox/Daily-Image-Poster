@@ -1,6 +1,5 @@
 package me.whizvox.dailyimageposter.util;
 
-import me.whizvox.dailyimageposter.DailyImagePoster;
 import me.whizvox.dailyimageposter.gui.DIPMenuBar;
 
 import javax.swing.*;
@@ -13,6 +12,8 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.HashMap;
 import java.util.Map;
+
+import static me.whizvox.dailyimageposter.DailyImagePoster.LOG;
 
 public class UIHelper {
 
@@ -36,7 +37,7 @@ public class UIHelper {
       try {
         Desktop.getDesktop().browse(URI.create(uri));
       } catch (IOException ex) {
-        DailyImagePoster.LOG.warn("Could not open link in browser", ex);
+        LOG.warn("Could not open link in browser", ex);
       }
     }
   }

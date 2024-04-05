@@ -1,9 +1,12 @@
-package me.whizvox.dailyimageposter.db;
+package me.whizvox.dailyimageposter.post;
 
-import me.whizvox.dailyimageposter.DailyImagePoster;
+import me.whizvox.dailyimageposter.db.NullValue;
+import me.whizvox.dailyimageposter.db.Repository;
 
 import java.sql.*;
 import java.util.*;
+
+import static me.whizvox.dailyimageposter.DailyImagePoster.LOG;
 
 public class PostRepository extends Repository<Post> {
 
@@ -155,11 +158,11 @@ public class PostRepository extends Repository<Post> {
             }
           }
         } catch (IllegalArgumentException e) {
-          DailyImagePoster.LOG.info("Invalid value for {}: {}", key, value);
+          LOG.info("Invalid value for {}: {}", key, value);
         }
       });
     }
-    DailyImagePoster.LOG.debug("POST SEARCH QUERY GENERATED: {}", sb);
+    LOG.debug("POST SEARCH QUERY GENERATED: {}", sb);
     return executeQuery(sb.toString(), args, this::fromRows);
   }
 

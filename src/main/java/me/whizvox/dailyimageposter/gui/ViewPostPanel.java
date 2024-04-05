@@ -1,7 +1,7 @@
 package me.whizvox.dailyimageposter.gui;
 
 import me.whizvox.dailyimageposter.DailyImagePoster;
-import me.whizvox.dailyimageposter.db.Post;
+import me.whizvox.dailyimageposter.post.Post;
 import me.whizvox.dailyimageposter.util.IOHelper;
 import me.whizvox.dailyimageposter.util.UIHelper;
 
@@ -16,6 +16,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Objects;
 import java.util.Optional;
 
+import static me.whizvox.dailyimageposter.DailyImagePoster.LOG;
 import static me.whizvox.dailyimageposter.util.UIHelper.GAP_SIZE;
 
 public class ViewPostPanel extends JPanel {
@@ -67,14 +68,14 @@ public class ViewPostPanel extends JPanel {
       BufferedImage image;
       Path imagePath = DailyImagePoster.getInstance().images().getImagePath(post);
       if (imagePath == null) {
-        DailyImagePoster.LOG.warn("Could not open image: {}", post.fileName());
+        LOG.warn("Could not open image: {}", post.fileName());
         image = ImageIO.read(IOHelper.getResource("noimage.png"));
       } else {
         image = ImageIO.read(imagePath.toFile());
       }
       UIHelper.updateImageLabel(imagePreview, image, 128);
     } catch (IOException e) {
-      DailyImagePoster.LOG.warn("Could not read image", e);
+      LOG.warn("Could not read image", e);
     }
     JLabel redditPostIdLabel = new JLabel("Reddit Post ID");
     JLabel redditPostIdValue = createValueLabel(post.redditPostId(), true);

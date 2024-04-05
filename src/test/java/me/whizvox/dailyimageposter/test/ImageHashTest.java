@@ -2,7 +2,7 @@ package me.whizvox.dailyimageposter.test;
 
 import dev.brachtendorf.jimagehash.hash.Hash;
 import dev.brachtendorf.jimagehash.hashAlgorithms.PerceptiveHash;
-import me.whizvox.dailyimageposter.db.ImageHashRepository;
+import me.whizvox.dailyimageposter.image.ImageHashRepository;
 import me.whizvox.dailyimageposter.util.IOHelper;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
