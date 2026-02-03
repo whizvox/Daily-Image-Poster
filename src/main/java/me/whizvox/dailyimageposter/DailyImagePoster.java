@@ -70,7 +70,7 @@ public class DailyImagePoster {
       Map.entry(PREF_MAX_IMAGE_SIZE, 1_100_000),
       Map.entry(PREF_IMAGE_HASH_ALGORITHM, "perceptive"),
       Map.entry(PREF_IMAGE_HASH_BIT_RES, 32),
-      Map.entry(PREF_SIMILARITY_THRESHOLD, 0.2),
+      Map.entry(PREF_SIMILARITY_THRESHOLD, 0.15),
       Map.entry(PREF_WAIFU2X_ARGS, "-c 9 -q 90"),
       Map.entry(PREF_OPEN_AFTER_POST, true)
   );

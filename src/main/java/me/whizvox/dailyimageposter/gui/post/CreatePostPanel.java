@@ -439,20 +439,23 @@ public class CreatePostPanel extends JPanel {
         hashesOutOfDate = false;
       }
     }
-    findSimilarButton.setText("Working...");
     findSimilarButton.setEnabled(false);
     SwingUtilities.invokeLater(() -> {
       List<ImageManager.SimilarImage> similarImages = app.images().findSimilarImages(
           selectedImageFile, app.preferences.getDouble(DailyImagePoster.PREF_SIMILARITY_THRESHOLD));
       similarImages.sort(Comparator.comparingDouble(ImageManager.SimilarImage::similarity));
-      findSimilarButton.setText("Find similar");
       findSimilarButton.setEnabled(true);
       if (similarImages.isEmpty()) {
         JOptionPane.showMessageDialog(this, "No similar images found!");
       } else {
-        JOptionPane.showMessageDialog(this, "This image has been found " + similarImages.size() + " time(s):\n" +
-            similarImages.stream()
-                .map(i -> "[%.3f] %s".formatted(i.similarity(), i.fileName())).collect(Collectors.joining("\n")));
+        JDialog dialog = new JDialog(parent, "Similar images found", true);
+        dialog.setContentPane(new SimilarImagesPanel(similarImages, () -> {
+          dialog.pack();
+          dialog.setLocationRelativeTo(parent);
+        }));
+        dialog.pack();
+        dialog.setLocationRelativeTo(parent);
+        dialog.setVisible(true);
       }
     });
   }
