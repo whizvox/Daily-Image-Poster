@@ -6,6 +6,7 @@ import me.whizvox.dailyimageposter.gui.imghash.ImageHashFrame;
 import me.whizvox.dailyimageposter.gui.legacy.ImportLegacyFrame;
 import me.whizvox.dailyimageposter.gui.post.CreatePostFrame;
 import me.whizvox.dailyimageposter.gui.prefs.PreferencesDialog;
+import me.whizvox.dailyimageposter.gui.reserve.EditReserveFrame;
 import me.whizvox.dailyimageposter.gui.search.SearchPostsFrame;
 
 import javax.swing.*;
@@ -59,6 +60,19 @@ public class DIPMenuBar extends JMenuBar {
     postsMenu.add(postsLegacy);
     postsMenu.add(postsHashes);
     postsMenu.add(postsRebuild);
+
+    JMenu reservesMenu = new JMenu("Reserves");
+    reservesMenu.setMnemonic('R');
+    JMenuItem reservesAdd = new JMenuItem("Add reserve image");
+    if (parent instanceof EditReserveFrame) {
+      reservesAdd.setEnabled(false);
+    } else {
+      reservesAdd.addActionListener(event -> app.changeFrame(EditReserveFrame::new, "Edit reserves"));
+    }
+    JMenuItem reservesEdit = new JMenuItem("Edit reserve image");
+    reservesMenu.add(reservesAdd);
+    reservesMenu.add(reservesEdit);
+    add(reservesMenu);
 
     JMenu backupsMenu = new JMenu("Backups");
     backupsMenu.setMnemonic('B');

@@ -11,6 +11,8 @@ import me.whizvox.dailyimageposter.image.ImageManager;
 import me.whizvox.dailyimageposter.post.PostRepository;
 import me.whizvox.dailyimageposter.reddit.RedditClient;
 import me.whizvox.dailyimageposter.reddit.RedditClientProperties;
+import me.whizvox.dailyimageposter.reserve.ReserveManager;
+import me.whizvox.dailyimageposter.reserve.ReserveRepository;
 import me.whizvox.dailyimageposter.util.Preferences;
 import me.whizvox.dailyimageposter.util.StringHelper;
 import me.whizvox.dailyimageposter.util.UIHelper;
@@ -86,6 +88,8 @@ public class DailyImagePoster {
   private BackupRepository backupRepo;
   private BackupService backupService;
   private ImageHashRepository hashRepo;
+  private ReserveRepository reserveRepo;
+  private ReserveManager reserveManager;
 
   public DailyImagePoster(DIPArguments arguments) {
     this.arguments = arguments;
@@ -103,6 +107,8 @@ public class DailyImagePoster {
     backupRepo = null;
     backupService = null;
     hashRepo = null;
+    reserveRepo = null;
+    reserveManager = null;
   }
 
   private HashingAlgorithm getHashingAlgorithm() {
@@ -141,6 +147,9 @@ public class DailyImagePoster {
     hashRepo = new ImageHashRepository(conn);
     hashRepo.create();
     imageManager = new ImageManager(Paths.get("images"), getHashingAlgorithm(), hashRepo);
+    reserveRepo = new ReserveRepository(conn);
+    reserveRepo.create();
+    reserveManager = new ReserveManager(Paths.get("reserves"), reserveRepo);
   }
 
   @Nullable
@@ -218,6 +227,10 @@ public class DailyImagePoster {
 
   public ImageHashRepository hashes() {
     return hashRepo;
+  }
+
+  public ReserveManager reserves() {
+    return reserveManager;
   }
 
   private void close() {
