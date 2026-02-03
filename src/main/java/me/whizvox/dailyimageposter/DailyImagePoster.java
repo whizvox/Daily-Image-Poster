@@ -75,11 +75,10 @@ public class DailyImagePoster {
       Map.entry(PREF_OPEN_AFTER_POST, true)
   );
 
-  private final DIPArguments arguments;
-  private JFrame currentFrame;
   public final Preferences preferences;
+  private final DIPArguments arguments;
   private final Path tempDir;
-
+  private JFrame currentFrame;
   private RedditClient client;
   private Connection conn;
   private PostRepository posts;

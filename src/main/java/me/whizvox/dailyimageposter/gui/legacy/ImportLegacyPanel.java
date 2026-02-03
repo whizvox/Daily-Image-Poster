@@ -24,12 +24,10 @@ import static me.whizvox.dailyimageposter.util.UIHelper.GAP_SIZE;
 public class ImportLegacyPanel extends JPanel {
 
   private final DailyImagePoster app;
-  @Nullable
-  private Path historyFile;
-
   private final JTextField dirField;
   private final JLabel statusLabel;
   private final JButton importButton;
+  private @Nullable Path historyFile;
 
   public ImportLegacyPanel() {
     app = DailyImagePoster.getInstance();

@@ -21,19 +21,6 @@ import static me.whizvox.dailyimageposter.util.UIHelper.GAP_SIZE;
 
 public class ViewPostPanel extends JPanel {
 
-  private static JLabel createValueLabel(Object value, boolean monospacedFont) {
-    JLabel label = value == null ? new JLabel("<none>") : new JLabel(String.valueOf(value));
-    if (value == null) {
-      label.setForeground(Color.GRAY);
-    }
-    if (monospacedFont) {
-      label.setFont(Font.decode(Font.MONOSPACED));
-    } else {
-      label.setFont(label.getFont().deriveFont(Font.PLAIN));
-    }
-    return label;
-  }
-
   public ViewPostPanel(Post post) {
     JLabel idLabel = new JLabel("ID");
     JLabel idValue = createValueLabel(post.id(), true);
@@ -197,6 +184,19 @@ public class ViewPostPanel extends JPanel {
       imgurLink.addActionListener(event -> UIHelper.browse("https://imgur.com/" + post.imgurId()));
     }
 
+  }
+
+  private static JLabel createValueLabel(Object value, boolean monospacedFont) {
+    JLabel label = value == null ? new JLabel("<none>") : new JLabel(String.valueOf(value));
+    if (value == null) {
+      label.setForeground(Color.GRAY);
+    }
+    if (monospacedFont) {
+      label.setFont(Font.decode(Font.MONOSPACED));
+    } else {
+      label.setFont(label.getFont().deriveFont(Font.PLAIN));
+    }
+    return label;
   }
 
 }

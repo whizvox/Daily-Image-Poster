@@ -13,7 +13,9 @@ import java.util.regex.Pattern;
 
 public class StringHelper {
 
-  private static final String[] UNITS = new String[] { "B", "KB", "MB", "GB", "TB", "PB" };
+  private static final String[] UNITS = new String[]{"B", "KB", "MB", "GB", "TB", "PB"};
+  private static final DateTimeFormatter COMPACT_DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddkkmmss");
+  private static final Pattern PATTERN_SUBMISSION_URL = Pattern.compile("https://www\\.reddit\\.com/r/(\\w+)/comments/(\\w+)/(\\w*)");
 
   public static String formatBytesLength(long n) {
     if (n < 1000) {
@@ -27,8 +29,6 @@ public class StringHelper {
     } while (scaledLength > 1000.0F && unitIndex < UNITS.length);
     return String.format("%.1f %s", scaledLength, UNITS[unitIndex]);
   }
-
-  private static final DateTimeFormatter COMPACT_DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddkkmmss");
 
   public static String formatCompactTimestamp(LocalDateTime ldt) {
     return COMPACT_DATE_TIME_FORMATTER.format(ldt);
@@ -68,9 +68,9 @@ public class StringHelper {
   public static String[] getFileNameBaseAndExtension(String fileName) {
     int indexOf = fileName.lastIndexOf('.');
     if (indexOf != -1) {
-      return new String[] { fileName.substring(0, indexOf), fileName.substring(indexOf) };
+      return new String[] {fileName.substring(0, indexOf), fileName.substring(indexOf)};
     }
-    return new String[] { fileName, "" };
+    return new String[] {fileName, ""};
   }
 
   public static String getFileNameWithoutExtension(String fileName) {
@@ -81,10 +81,9 @@ public class StringHelper {
     return getFileNameBaseAndExtension(fileName)[1];
   }
 
-  private static final Pattern PATTERN_SUBMISSION_URL = Pattern.compile("https://www\\.reddit\\.com/r/(\\w+)/comments/(\\w+)/(\\w*)");
-
   /**
    * Split a Reddit submission URL into 3 parts: 1) subreddit name, 2) link ID, 3) slug.
+   *
    * @param submissionUrl The submission URL. MUST be formatted like so:
    *                      <code>https://www.reddit.com/r/&lt;subreddit>/comments/&lt;linkId>/&lt;slug></code>.
    * @return A string array containing each part. <code>[0]</code> = subreddit name, <code>[1]</code> = link ID,
@@ -93,7 +92,7 @@ public class StringHelper {
   public static String[] getRedditLinkParts(String submissionUrl) {
     Matcher matcher = PATTERN_SUBMISSION_URL.matcher(submissionUrl);
     if (matcher.find()) {
-      return new String[] { matcher.group(1), matcher.group(2), matcher.group(3) };
+      return new String[] {matcher.group(1), matcher.group(2), matcher.group(3)};
     }
     return new String[0];
   }

@@ -14,8 +14,8 @@ import me.whizvox.dailyimageposter.util.UIHelper;
 import me.whizvox.dailyimageposter.waifu2x.Upscaler;
 
 import javax.imageio.ImageIO;
-import javax.swing.Timer;
 import javax.swing.*;
+import javax.swing.Timer;
 import javax.swing.border.StrokeBorder;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
@@ -32,8 +32,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.*;
+import java.util.List;
 import java.util.stream.Collectors;
 
 import static me.whizvox.dailyimageposter.DailyImagePoster.LOG;
@@ -571,7 +571,7 @@ public class CreatePostPanel extends JPanel {
           });
         } else {
           LOG.warn("Could not parse link ID from URL: {}", submissionUrl);
-          JOptionPane.showMessageDialog(this, "Unexpected response from Reddit\n" + submissionUrl, "Error",JOptionPane.WARNING_MESSAGE);
+          JOptionPane.showMessageDialog(this, "Unexpected response from Reddit\n" + submissionUrl, "Error", JOptionPane.WARNING_MESSAGE);
         }
       } else {
         JOptionPane.showMessageDialog(this, "Upload unsuccessful\n" + ex.getMessage(), "Error", JOptionPane.WARNING_MESSAGE);

@@ -74,8 +74,9 @@ public class IOHelper {
 
   /**
    * Save an image as a JPEG while allowing control of the compression quality.
-   * @param image Source image
-   * @param dest Destination image path
+   *
+   * @param image   Source image
+   * @param dest    Destination image path
    * @param quality A value between 0 and 1
    * @throws IOException If image reading or writing failed
    */

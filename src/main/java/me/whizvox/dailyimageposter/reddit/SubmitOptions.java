@@ -5,21 +5,6 @@ import java.util.Map;
 
 public class SubmitOptions {
 
-  public enum Kind {
-    LINK,
-    SELF,
-    IMAGE,
-    VIDEO,
-    VIDEOGIF;
-    private final String name;
-    Kind() {
-      name = super.toString().toLowerCase();
-    }
-    public String getName() {
-      return name;
-    }
-  }
-
   public String flairId;
   public String flairText;
   public Kind kind;
@@ -117,6 +102,23 @@ public class SubmitOptions {
       map.put("url", url);
     }
     return map;
+  }
+
+  public enum Kind {
+    LINK,
+    SELF,
+    IMAGE,
+    VIDEO,
+    VIDEOGIF;
+    private final String name;
+
+    Kind() {
+      name = super.toString().toLowerCase();
+    }
+
+    public String getName() {
+      return name;
+    }
   }
 
 }

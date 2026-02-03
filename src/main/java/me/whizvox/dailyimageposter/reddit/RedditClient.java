@@ -53,10 +53,14 @@ public class RedditClient {
       EP_INFO = OAUTH_API + "info",
       EP_COMMENT = OAUTH_API + "comment",
       EP_LINK_FLAIRS = OAUTH_BASE + "r/%s/api/link_flair_v2";
+  private static final Map<String, String> IMAGE_TYPES = Map.of(
+      "png", "image/png",
+      "jpg", "image/jpeg",
+      "jpeg", "image/jpeg"
+  );
 
   private final RedditClientProperties props;
   private final Methanol client;
-
   private AccessToken accessToken;
   private LocalDateTime accessTokenExpires;
 
@@ -179,7 +183,7 @@ public class RedditClient {
       first = CompletableFuture.completedFuture(null);
     }
     return first.thenCompose(nil -> {
-      LOG.debug("Sending {} request to {}...", req.method(), req.uri());
+          LOG.debug("Sending {} request to {}...", req.method(), req.uri());
           return client.sendAsync(req, HttpResponse.BodyHandlers.ofString())
               .thenApply(res -> handleResponse(res, func, 3, 0));
         }
@@ -243,11 +247,6 @@ public class RedditClient {
   // fun fact: this isn't documented anywhere :))))))))))))
   // had to look at PRAW's source code to figure this out
 
-  private static final Map<String, String> IMAGE_TYPES = Map.of(
-      "png", "image/png",
-      "jpg", "image/jpeg",
-      "jpeg", "image/jpeg"
-  );
   public CompletableFuture<ImageUploadResult> uploadImage(Path imageFile, @Nullable String type) {
     if (type == null) {
       String fileName = imageFile.getFileName().toString();
@@ -325,7 +324,8 @@ public class RedditClient {
                 message.set(s);
                 message.notify();
                 return WebSocket.Listener.super.onText(webSocket, data, last);
-              }}).join();
+              }
+            }).join();
         // wait until websocket connection receives message
         LOG.debug("Websocket opened");
         synchronized (message) {

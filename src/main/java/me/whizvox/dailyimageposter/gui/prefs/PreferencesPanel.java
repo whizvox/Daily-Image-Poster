@@ -14,10 +14,9 @@ import static me.whizvox.dailyimageposter.util.UIHelper.GAP_SIZE;
 public class PreferencesPanel extends JPanel {
 
   private final JScrollPane prefsScrollPane;
-  private AbstractPrefsPanel currentPrefsPanel;
   private final JButton saveButton;
-
   private final Map<String, Object> prefsCopy;
+  private AbstractPrefsPanel currentPrefsPanel;
   private boolean unsavedChanges;
 
   public PreferencesPanel(PreferencesDialog parent) {

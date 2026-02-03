@@ -5,6 +5,9 @@ import java.util.Map;
 
 public class UploadMediaLease {
 
+  public Arguments args;
+  public Asset asset;
+
   public static class FieldEntry {
     public String name;
     public String value;
@@ -21,8 +24,5 @@ public class UploadMediaLease {
     public Map<String, String> payload;
     public String websocketUrl;
   }
-
-  public Arguments args;
-  public Asset asset;
 
 }

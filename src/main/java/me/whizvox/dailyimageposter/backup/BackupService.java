@@ -33,7 +33,7 @@ public class BackupService {
     try (var walk = Files.walk(root, 1).filter(p -> !p.equals(root))) {
       walk.forEach(consumer);
     } catch (IOException e) {
-      LOG.warn("Could not perform walk of " + root, e);
+      LOG.warn("Could not perform walk of {}", root, e);
     }
   }
 
@@ -46,6 +46,7 @@ public class BackupService {
     List<String> updatedHashes = new ArrayList<>();
     Set<String> knownFiles = new HashSet<>();
     forEach(path -> {
+      LOG.debug("Verifying backup {}", path);
       String fileName = path.getFileName().toString();
       knownFiles.add(fileName);
       Backup backup = repo.get(fileName);
@@ -61,7 +62,8 @@ public class BackupService {
               String hash = IOHelper.sha1(path);
               repo.add(fileName, origFileName, hash, created);
               success = true;
-            } catch (DateTimeException ignored) {}
+            } catch (DateTimeException ignored) {
+            }
           }
           if (success) {
             imported.add(fileName);
@@ -119,7 +121,12 @@ public class BackupService {
         .skip(max)
         .forEach(backup -> {
           LOG.debug("Deleting old backup {}", backup.fileName());
-          //repo.delete(backup.fileName());
+          repo.delete(backup.fileName());
+          try {
+            Files.delete(root.resolve(backup.fileName()));
+          } catch (IOException e) {
+            LOG.warn("Could not delete backup {}", backup.fileName(), e);
+          }
         });
   }
 

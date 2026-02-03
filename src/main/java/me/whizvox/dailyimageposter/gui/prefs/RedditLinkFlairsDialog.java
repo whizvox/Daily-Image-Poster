@@ -35,6 +35,14 @@ public class RedditLinkFlairsDialog extends JDialog {
     setLocationRelativeTo(owner);
   }
 
+  public static LinkFlair selectFlair(Frame owner, String subreddit) {
+    var dialog = new RedditLinkFlairsDialog(owner);
+    dialog.panel.refreshFlairs(subreddit);
+    dialog.setVisible(true);
+    dialog.dispose();
+    return dialog.selectedFlair;
+  }
+
   public class Panel extends JPanel {
 
     private final LinkFlairsTableModel tableModel;
@@ -77,14 +85,6 @@ public class RedditLinkFlairsDialog extends JDialog {
         }
       });
     }
-  }
-
-  public static LinkFlair selectFlair(Frame owner, String subreddit) {
-    var dialog = new RedditLinkFlairsDialog(owner);
-    dialog.panel.refreshFlairs(subreddit);
-    dialog.setVisible(true);
-    dialog.dispose();
-    return dialog.selectedFlair;
   }
 
 }

@@ -4,6 +4,19 @@ import java.util.List;
 
 public class ListingData<T> {
 
+  public String after;
+  public String before;
+  public List<Entry> children;
+
+  public ListingData(String after, String before, List<Entry> children) {
+    this.after = after;
+    this.before = before;
+    this.children = children;
+  }
+
+  public ListingData() {
+  }
+
   public class Entry {
 
     public String kind;
@@ -17,19 +30,6 @@ public class ListingData<T> {
     public Entry() {
     }
 
-  }
-
-  public String after;
-  public String before;
-  public List<Entry> children;
-
-  public ListingData(String after, String before, List<Entry> children) {
-    this.after = after;
-    this.before = before;
-    this.children = children;
-  }
-
-  public ListingData() {
   }
 
 }
