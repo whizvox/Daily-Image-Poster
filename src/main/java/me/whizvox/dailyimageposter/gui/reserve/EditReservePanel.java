@@ -1,6 +1,7 @@
 package me.whizvox.dailyimageposter.gui.reserve;
 
 import me.whizvox.dailyimageposter.DailyImagePoster;
+import me.whizvox.dailyimageposter.gui.DocumentChangedListener;
 import me.whizvox.dailyimageposter.gui.post.SimilarImagesPanel;
 import me.whizvox.dailyimageposter.image.ImageManager;
 import me.whizvox.dailyimageposter.reserve.Reserve;
@@ -42,6 +43,7 @@ public class EditReservePanel extends JPanel {
   private Path selectedImageFile;
   private Path lastSelectedDir;
   private boolean imageUpdated;
+  private boolean modified;
 
   private final JLabel titleLabel;
   private final JTextField titleField;
@@ -65,6 +67,7 @@ public class EditReservePanel extends JPanel {
     selectedImageFile = null;
     lastSelectedDir = null;
     imageUpdated = false;
+    modified = false;
 
     titleLabel = new JLabel("Title");
     titleField = new JTextField();
@@ -148,6 +151,14 @@ public class EditReservePanel extends JPanel {
     );
     setLayout(layout);
 
+    DocumentChangedListener markModified = e -> modified = true;
+    titleField.getDocument().addDocumentListener(markModified);
+    artistField.getDocument().addDocumentListener(markModified);
+    sourceField.getDocument().addDocumentListener(markModified);
+    commentField.getDocument().addDocumentListener(markModified);
+    imageNsfwCheck.addChangeListener(e -> modified = true);
+    sourceNsfwCheck.addChangeListener(e -> modified = true);
+
     selectImageButton.addActionListener(event -> {
       if (lastSelectedDir == null) {
         lastSelectedDir = Paths.get(Objects.requireNonNullElse(DailyImagePoster.getInstance().preferences.getString(DailyImagePoster.PREF_LAST_IMAGE_DIRECTORY), "."));
@@ -182,6 +193,19 @@ public class EditReservePanel extends JPanel {
           }
           findSimilarButton.setEnabled(true);
         });
+      }
+    });
+    resetButton.addActionListener(event -> {
+      boolean shouldReset;
+      if (modified) {
+        int answer = JOptionPane.showConfirmDialog(parent, "Are you sure you want to reset all fields?", "Question", JOptionPane.YES_NO_OPTION);
+        shouldReset = answer == JOptionPane.YES_OPTION;
+      } else {
+        shouldReset = true;
+      }
+      if (shouldReset) {
+        updateDetails(null);
+        modified = false;
       }
     });
     saveButton.addActionListener(event -> {
@@ -229,6 +253,7 @@ public class EditReservePanel extends JPanel {
         JOptionPane.showMessageDialog(parent, "Successfully added reserve image.");
         editId = reserve.id();
         saveButton.setText("Save changes");
+        modified = false;
       } else {
         if (selectedImageFile == null) {
           JOptionPane.showMessageDialog(parent, "Cannot save a reserve with no image.", "Warning", JOptionPane.WARNING_MESSAGE);
@@ -266,6 +291,7 @@ public class EditReservePanel extends JPanel {
         DailyImagePoster.getInstance().reserves().getRepo().update(reserve);
         DailyImagePoster.LOG.info("Updated reserve image: id={}", reserve.id());
         JOptionPane.showMessageDialog(parent, "Successfully updated reserve image.");
+        modified = false;
       }
     });
 
@@ -313,6 +339,7 @@ public class EditReservePanel extends JPanel {
           } else {
             selectedImageFile = path;
             imageUpdated = true;
+            modified = true;
           }
         }
       }
@@ -352,6 +379,7 @@ public class EditReservePanel extends JPanel {
         JOptionPane.showMessageDialog(parent, "Could not find image at " + reserve.fileName(), "Warning", JOptionPane.WARNING_MESSAGE);
       }
     }
+    modified = false;
     parent.pack();
   }
 

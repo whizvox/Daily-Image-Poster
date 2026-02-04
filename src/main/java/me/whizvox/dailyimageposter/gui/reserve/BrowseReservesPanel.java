@@ -53,6 +53,7 @@ public class BrowseReservesPanel extends JPanel {
         .addGroup(GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
             .addComponent(deleteButton)
             .addComponent(editButton)
+            .addGap(GAP_SIZE * 2)
             .addComponent(addButton)
         )
     );
@@ -103,8 +104,10 @@ public class BrowseReservesPanel extends JPanel {
     List<Reserve> reserves = DailyImagePoster.getInstance().reserves().getRepo().getAll();
     if (reserves.isEmpty()) {
       entriesPanel.add(new JLabel("No reserves found..."));
+      entriesPanel.updateUI();
     } else {
       entriesPanel.add(new JLabel("Loading..."));
+      entriesPanel.updateUI();
       SwingUtilities.invokeLater(() -> {
         List<JLabel> imageLabels = new ArrayList<>();
         reserves.forEach(reserve -> {
@@ -153,9 +156,9 @@ public class BrowseReservesPanel extends JPanel {
         } else {
           imageLabels.forEach(label -> entriesPanel.add(label));
         }
+        entriesPanel.updateUI();
       });
     }
-    entriesPanel.updateUI();
   }
 
 }
