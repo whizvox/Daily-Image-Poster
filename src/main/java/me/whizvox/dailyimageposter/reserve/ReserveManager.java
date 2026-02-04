@@ -47,6 +47,7 @@ public class ReserveManager {
     Path path = getPath(fileName);
     try {
       Files.deleteIfExists(path);
+      repo.deleteByFile(fileName);
     } catch (IOException e) {
       DailyImagePoster.LOG.warn("Could not delete reserve image {}", path, e);
     }

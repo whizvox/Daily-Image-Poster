@@ -7,6 +7,7 @@ import me.whizvox.dailyimageposter.gui.legacy.ImportLegacyFrame;
 import me.whizvox.dailyimageposter.gui.post.CreatePostFrame;
 import me.whizvox.dailyimageposter.gui.prefs.PreferencesDialog;
 import me.whizvox.dailyimageposter.gui.reserve.EditReserveFrame;
+import me.whizvox.dailyimageposter.gui.reserve.BrowseReservesFrame;
 import me.whizvox.dailyimageposter.gui.search.SearchPostsFrame;
 
 import javax.swing.*;
@@ -67,11 +68,16 @@ public class DIPMenuBar extends JMenuBar {
     if (parent instanceof EditReserveFrame) {
       reservesAdd.setEnabled(false);
     } else {
-      reservesAdd.addActionListener(event -> app.changeFrame(EditReserveFrame::new, "Edit reserves"));
+      reservesAdd.addActionListener(event -> app.changeFrame(EditReserveFrame::new, "Add reserve image"));
     }
-    JMenuItem reservesEdit = new JMenuItem("Edit reserve image");
+    JMenuItem reservesBrowse = new JMenuItem("Browse reserves");
+    if (parent instanceof BrowseReservesFrame) {
+      reservesBrowse.setEnabled(false);
+    } else {
+      reservesBrowse.addActionListener(event -> app.changeFrame(BrowseReservesFrame::new, "Browse reserve images"));
+    }
     reservesMenu.add(reservesAdd);
-    reservesMenu.add(reservesEdit);
+    reservesMenu.add(reservesBrowse);
     add(reservesMenu);
 
     JMenu backupsMenu = new JMenu("Backups");

@@ -56,7 +56,7 @@ public class EditReservePanel extends JPanel {
   private final JLabel imageLabel;
   private final JButton selectImageButton;
   private final JButton findSimilarButton;
-  private final JButton editButton;
+  private final JButton resetButton;
   private final JButton saveButton;
 
   public EditReservePanel(Window parent) {
@@ -80,7 +80,7 @@ public class EditReservePanel extends JPanel {
     imageLabel.setBorder(new StrokeBorder(new BasicStroke(1), Color.BLACK));
     selectImageButton = new JButton("Select image...");
     findSimilarButton = new JButton("Find similar");
-    editButton = new JButton("Edit...");
+    resetButton = new JButton("Reset");
     saveButton = new JButton("Add");
 
     final int FH = selectImageButton.getPreferredSize().height;
@@ -109,7 +109,7 @@ public class EditReservePanel extends JPanel {
             )
         )
         .addGroup(GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-            .addComponent(editButton)
+            .addComponent(resetButton)
             .addGap(GAP_SIZE)
             .addComponent(saveButton)
         )
@@ -142,7 +142,7 @@ public class EditReservePanel extends JPanel {
         )
         .addGap(GAP_SIZE)
         .addGroup(layout.createParallelGroup()
-            .addComponent(editButton)
+            .addComponent(resetButton)
             .addComponent(saveButton)
         )
     );
@@ -227,6 +227,8 @@ public class EditReservePanel extends JPanel {
         DailyImagePoster.getInstance().reserves().getRepo().add(reserve);
         DailyImagePoster.LOG.info("Added new reserve image: id={}, fileName={}", reserve.id(), reserve.fileName());
         JOptionPane.showMessageDialog(parent, "Successfully added reserve image.");
+        editId = reserve.id();
+        saveButton.setText("Save changes");
       } else {
         if (selectedImageFile == null) {
           JOptionPane.showMessageDialog(parent, "Cannot save a reserve with no image.", "Warning", JOptionPane.WARNING_MESSAGE);

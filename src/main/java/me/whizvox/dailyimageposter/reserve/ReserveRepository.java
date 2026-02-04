@@ -34,7 +34,9 @@ public class ReserveRepository extends Repository<Reserve> {
       SQL_SELECT_ALL = "SELECT id,file_name,title,artist,source,comment,image_nsfw,source_nsfw,when_created FROM reserves",
       SQL_SELECT_ONE = SQL_SELECT_ALL + " WHERE id=?",
       SQL_SELECT_BY_FILE = SQL_SELECT_ALL + " WHERE file_name=?",
-      SQL_DELETE = "DELETE FROM reserves WHERE id=?",
+      SQL_DELETE_ALL = "DELETE FROM reserves",
+      SQL_DELETE_ONE = SQL_DELETE_ALL + " WHERE id=?",
+      SQL_DELETE_BY_FILE = SQL_DELETE_ALL + " WHERE file_name=?",
       SQL_DROP = "DROP TABLE reserves";
   
   public ReserveRepository(Connection conn) {
@@ -66,7 +68,7 @@ public class ReserveRepository extends Repository<Reserve> {
     execute(SQL_DROP);
   }
 
-  public List<Reserve> findAll() {
+  public List<Reserve> getAll() {
     return executeQuery(SQL_SELECT_ALL, this::fromRows);
   }
 
@@ -106,7 +108,11 @@ public class ReserveRepository extends Repository<Reserve> {
   }
 
   public void delete(UUID id) {
-    execute(SQL_DELETE, List.of(id));
+    execute(SQL_DELETE_ONE, List.of(id));
+  }
+
+  public void deleteByFile(String fileName) {
+    execute(SQL_DELETE_BY_FILE, List.of(fileName));
   }
   
 }
