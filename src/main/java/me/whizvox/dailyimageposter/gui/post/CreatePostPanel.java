@@ -8,6 +8,7 @@ import me.whizvox.dailyimageposter.post.Post;
 import me.whizvox.dailyimageposter.reddit.RedditClient;
 import me.whizvox.dailyimageposter.reddit.SubmitOptions;
 import me.whizvox.dailyimageposter.reddit.pojo.Comment;
+import me.whizvox.dailyimageposter.reserve.Reserve;
 import me.whizvox.dailyimageposter.util.IOHelper;
 import me.whizvox.dailyimageposter.util.StringHelper;
 import me.whizvox.dailyimageposter.util.UIHelper;
@@ -34,7 +35,6 @@ import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import static me.whizvox.dailyimageposter.DailyImagePoster.LOG;
 import static me.whizvox.dailyimageposter.util.UIHelper.GAP_SIZE;
@@ -74,11 +74,13 @@ public class CreatePostPanel extends JPanel {
   private long imageSize;
   private Timer checkRedditClientStatusTimer;
   private boolean hashesOutOfDate;
+  private Reserve reserve;
 
   public CreatePostPanel(CreatePostFrame parent) {
     app = DailyImagePoster.getInstance();
     this.parent = parent;
     id = UUID.randomUUID();
+    reserve = null;
     idLabel = new JLabel("ID: " + id);
     JLabel numberLabel = new JLabel("Number");
     numberField = new JTextField();
@@ -292,6 +294,23 @@ public class CreatePostPanel extends JPanel {
     postButton.setEnabled(enablePostButton);
   }
 
+  public void prepareReserve(Reserve reserve) {
+    findLatestPostNumber();
+    titleField.setText(reserve.title());
+    artistField.setText(reserve.artist());
+    sourceField.setText(reserve.source());
+    commentField.setText(reserve.comment());
+    postNsfwBox.setSelected(reserve.imageNsfw());
+    sourceNsfwBox.setSelected(reserve.sourceNsfw());
+    Path path = DailyImagePoster.getInstance().reserves().getPath(reserve.fileName());
+    if (Files.exists(path)) {
+      updateImage(path, false);
+      this.reserve = reserve;
+    } else {
+      DailyImagePoster.LOG.warn("Could not find reserve image path {}", path);
+    }
+  }
+
   private void findLatestPostNumber() {
     Post last = app.posts().getLast();
     if (last == null) {
@@ -351,11 +370,13 @@ public class CreatePostPanel extends JPanel {
     try {
       imageSize = Files.size(imagePath);
     } catch (IOException e) {
-      LOG.warn("Could not get file size for " + imagePath, e);
+      LOG.warn("Could not get file size for {}", imagePath, e);
       imageSize = 0;
     }
     imageInfoLabel.setText(StringHelper.formatBytesLength(imageSize) + " | " + imageWidth + "x" + imageHeight);
     UIHelper.updateImageLabel(imagePreviewLabel, image, IMAGE_SIZE);
+    // reset reserve status
+    reserve = null;
   }
 
   private void shrinkImage() {
@@ -531,7 +552,7 @@ public class CreatePostPanel extends JPanel {
     try {
       fileName = app.images().copy(selectedImageFile, majorNum);
     } catch (IOException e) {
-      LOG.warn("Could not copy image: " + selectedImageFile, e);
+      LOG.warn("Could not copy image: {}", selectedImageFile, e);
       JOptionPane.showMessageDialog(this, "Could not copy image\n" + e.getMessage(), "Error", JOptionPane.WARNING_MESSAGE);
       return;
     }
@@ -563,6 +584,12 @@ public class CreatePostPanel extends JPanel {
             Post post = new Post(UUID.randomUUID(), fileName, majorNum, (byte) minorNum, title, artist, source,
                 commentText, postNsfw, sourceNsfw, linkId, commentId, null, LocalDateTime.now());
             app.posts().add(post);
+            if (reserve != null) {
+              DailyImagePoster.getInstance().reserves().delete(reserve.fileName());
+              DailyImagePoster.getInstance().reserves().getRepo().delete(reserve.id());
+              DailyImagePoster.LOG.info("Deleted reserve: id={}, fileName={}", reserve.id(), reserve.fileName());
+              reserve = null;
+            }
             if (commentId == null) {
               JOptionPane.showMessageDialog(null, "Successfully posted, but comment could not be posted");
             } else {

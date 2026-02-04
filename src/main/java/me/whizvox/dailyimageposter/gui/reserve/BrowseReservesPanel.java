@@ -1,6 +1,7 @@
 package me.whizvox.dailyimageposter.gui.reserve;
 
 import me.whizvox.dailyimageposter.DailyImagePoster;
+import me.whizvox.dailyimageposter.gui.post.CreatePostFrame;
 import me.whizvox.dailyimageposter.reserve.Reserve;
 import me.whizvox.dailyimageposter.util.UIHelper;
 
@@ -28,6 +29,7 @@ public class BrowseReservesPanel extends JPanel {
   private final GridLayout entriesLayout;
   private final JButton deleteButton;
   private final JButton editButton;
+  private final JButton postButton;
   private final JButton addButton;
 
   private Reserve selectedReserve;
@@ -43,6 +45,7 @@ public class BrowseReservesPanel extends JPanel {
 
     deleteButton = new JButton("Delete");
     editButton = new JButton("Edit");
+    postButton = new JButton("Post");
     addButton = new JButton("Add new");
 
     GroupLayout layout = new GroupLayout(this);
@@ -53,6 +56,7 @@ public class BrowseReservesPanel extends JPanel {
         .addGroup(GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
             .addComponent(deleteButton)
             .addComponent(editButton)
+            .addComponent(postButton)
             .addGap(GAP_SIZE * 2)
             .addComponent(addButton)
         )
@@ -63,6 +67,7 @@ public class BrowseReservesPanel extends JPanel {
         .addGroup(layout.createParallelGroup()
             .addComponent(deleteButton)
             .addComponent(editButton)
+            .addComponent(postButton)
             .addComponent(addButton)
         )
     );
@@ -78,6 +83,7 @@ public class BrowseReservesPanel extends JPanel {
           selectedReserve = null;
           deleteButton.setEnabled(false);
           editButton.setEnabled(false);
+          postButton.setEnabled(false);
           updateReserves();
         }
       }
@@ -90,6 +96,16 @@ public class BrowseReservesPanel extends JPanel {
           editFrame.panel.updateDetails(selectedReserve);
           return editFrame;
         }, "Edit reserve image");
+      }
+    });
+    postButton.setEnabled(false);
+    postButton.addActionListener(event -> {
+      if (selectedReserve != null) {
+        DailyImagePoster.getInstance().changeFrame(() -> {
+          CreatePostFrame frame = new CreatePostFrame();
+          frame.getPanel().prepareReserve(selectedReserve);
+          return frame;
+        }, "Post image");
       }
     });
     addButton.addActionListener(event -> {
@@ -128,6 +144,7 @@ public class BrowseReservesPanel extends JPanel {
                   label.setBorder(new StrokeBorder(new BasicStroke(1), Color.GREEN));
                   deleteButton.setEnabled(true);
                   editButton.setEnabled(true);
+                  postButton.setEnabled(true);
                 }
                 @Override
                 public void mouseEntered(MouseEvent event) {
